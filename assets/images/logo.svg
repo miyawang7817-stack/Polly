@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4fb3ff"/>
+      <stop offset="50%" stop-color="#6b70ff"/>
+      <stop offset="100%" stop-color="#a25bff"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5fd0ff"/>
+      <stop offset="100%" stop-color="#7a68ff"/>
+    </linearGradient>
+  </defs>
+  <!-- Stylized geometric bird icon -->
+  <rect x="16" y="16" width="224" height="224" rx="48" fill="#f5f7fb"/>
+  <g transform="translate(32,36)">
+    <!-- body -->
+    <path d="M72 40 L112 56 L156 112 L112 140 L64 120 L48 84 Z" fill="url(#g1)"/>
+    <!-- wing -->
+    <path d="M120 92 L168 128 L128 152 L96 136 Z" fill="url(#g2)"/>
+    <!-- beak -->
+    <path d="M64 48 L84 60 L64 64 Z" fill="#5a61ff"/>
+    <!-- head -->
+    <path d="M84 40 L108 52 L96 68 L72 56 Z" fill="#66c1ff"/>
+    <!-- eye -->
+    <circle cx="96" cy="58" r="6" fill="#1d1f2a"/>
+    <!-- shadow base -->
+    <ellipse cx="108" cy="172" rx="68" ry="12" fill="#dfe3ef"/>
+  </g>
+</svg>

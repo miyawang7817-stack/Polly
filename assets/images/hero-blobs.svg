@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <defs>
+    <!-- Soft pastel gradient for blobs -->
+    <linearGradient id="blobGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a5e1ff"/>
+      <stop offset="0.5" stop-color="#ffd1f2"/>
+      <stop offset="1" stop-color="#c6b7ff"/>
+    </linearGradient>
+    <!-- Glass outline gradient -->
+    <linearGradient id="glassStroke" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <filter id="softBlur" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background is provided by CSS gradient; this SVG adds blobs + glass wireframes -->
+
+  <!-- Blobs cluster -->
+  <g opacity="0.9">
+    <path d="M1200 440c80-40 140 30 120 100s-100 100-170 80-60-140 50-180z" fill="url(#blobGrad)" filter="url(#softBlur)"/>
+    <path d="M1360 340c50-20 110 20 90 70s-90 80-140 60-40-100 50-130z" fill="url(#blobGrad)" filter="url(#softBlur)"/>
+    <path d="M1180 620c30-20 80 10 70 50s-60 60-100 48-30-70 30-98z" fill="url(#blobGrad)" filter="url(#softBlur)"/>
+    <path d="M1450 540c30-15 60 25 45 55s-55 45-85 35-12-64 40-90z" fill="url(#blobGrad)" filter="url(#softBlur)"/>
+    <path d="M980 520c50-25 100 25 80 75s-85 70-135 55-40-95 55-130z" fill="url(#blobGrad)" filter="url(#softBlur)"/>
+  </g>
+
+  <!-- Glass wireframe polygons -->
+  <g opacity="0.7" filter="url(#glow)">
+    <polygon points="980,360 1300,460 1200,680 900,600" fill="none" stroke="url(#glassStroke)" stroke-width="2"/>
+    <polygon points="1280,260 1420,320 1340,420 1210,380" fill="none" stroke="url(#glassStroke)" stroke-width="2"/>
+    <polygon points="1460,620 1580,680 1500,760 1380,720" fill="none" stroke="url(#glassStroke)" stroke-width="2"/>
+  </g>
+
+  <!-- Distant floating blobs -->
+  <g opacity="0.8">
+    <circle cx="380" cy="660" r="42" fill="url(#blobGrad)" filter="url(#softBlur)"/>
+    <circle cx="540" cy="720" r="28" fill="url(#blobGrad)" filter="url(#softBlur)"/>
+    <path d="M440 520c40-10 70 25 60 60s-60 60-100 50-30-85 40-110z" fill="url(#blobGrad)" filter="url(#softBlur)"/>
+  </g>
+</svg>

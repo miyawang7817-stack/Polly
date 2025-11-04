@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polly FAQ</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .details-card { background: var(--surface-color); border: 1px solid var(--light-gray); border-radius: 10px; padding: 16px; margin-bottom: 12px; color: var(--text-color); }
+    /* 标题与内容间距、更好的自适应字号 */
+    .converter-section .container h2 {
+      margin-bottom: 12px;
+      font-size: clamp(22px, 2.8vw, 28px);
+      line-height: 1.2;
+    }
+    /* 页面顶部与内容的间距（仅 FAQ 页作用） */
+    .converter-section {
+      padding-top: clamp(18px, 3.2vw, 36px);
+    }
+    /* 顶部导航的拥挤感优化（仅 FAQ 页作用） */
+    header nav {
+      padding: clamp(10px, 2.4vw, 16px) 0;
+    }
+    .nav-links {
+      gap: clamp(8px, 2.2vw, 18px);
+    }
+    .nav-links a {
+      padding: 6px 10px;
+    }
+    /* 问题与答案的自适应字号与行高 */
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: clamp(16px, 2.4vw, 18px);
+      line-height: 1.35;
+    }
+    .details-card div {
+      font-size: clamp(14px, 2.2vw, 16px);
+      line-height: 1.7;
+    }
+    details[open] summary { color: var(--primary-color); }
+    @media (max-width: 480px) {
+      .details-card { padding: 14px; }
+    }
+  </style>
+  <!-- Three.js libs not required here -->
+</head>
+<body>
+  <header>
+    <nav>
+      <a class="logo" href="index.html" aria-label="Polly home">
+        <img src="assets/images/logo-modern.svg" alt="Polly logo" onerror="this.onerror=null; this.src='assets/images/logo.png';" />
+        <span class="logo-text">Polly</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="gallery.html">Gallery</a></li>
+        <li><a href="faq.html" class="active">FAQ</a></li>
+        <li><a href="#">Login</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section class="converter-section">
+    <div class="container">
+      <h2>FAQ</h2>
+
+      <details class="details-card">
+        <summary>How do I upload and convert an image to a 3D model?</summary>
+        <div style="margin-top:8px;">On the Home page, click the upload area and select a JPEG/PNG/WebP image. The system processes it and shows a 3D preview on the right.</div>
+      </details>
+
+      <details class="details-card">
+        <summary>What formats are supported?</summary>
+        <div style="margin-top:8px;">Images: JPEG, PNG, WebP. Generated 3D models are exported as GLB, usable directly in compatible viewers.</div>
+      </details>
+
+      <details class="details-card">
+        <summary>How do I download the generated 3D model?</summary>
+        <div style="margin-top:8px;">Click the "Download GLB" button in the preview area or on the gallery card to download the model file.</div>
+      </details>
+
+      <details class="details-card">
+        <summary>What browsers are supported?</summary>
+        <div style="margin-top:8px;">Modern browsers (Chrome, Edge, Safari, Firefox) are supported. If the 3D preview behaves unexpectedly, please update your browser.</div>
+      </details>
+
+      <details class="details-card">
+        <summary>What if loading is slow or the model appears blank?</summary>
+        <div style="margin-top:8px;">Check your network and file integrity. The page includes placeholders and error hints; if issues persist, refresh the page or re-upload.</div>
+      </details>
+
+      <details class="details-card">
+        <summary>How are gallery categories (Object/Car/Helmet/Role) determined?</summary>
+        <div style="margin-top:8px;">Categories are mapped by filename or specific rules. If you request changes, we will update both the mapping and filter chips.</div>
+      </details>
+
+      <!-- New Gachi3D Q&A items -->
+      <details class="details-card">
+        <summary>How do I get started with Gachi3D?</summary>
+        <div style="margin-top:8px;">Visit our 3D Generator on the Home page and choose either Text‑to‑3D or Image‑to‑3D. Enter your description or upload an image, then click Generate. The process typically takes 1–3 minutes.</div>
+      </details>
+
+      <details class="details-card">
+        <summary>How is the quality of generated 3D models?</summary>
+        <div style="margin-top:8px;">We use the Tencent Hunyuan 3D API to produce high‑quality models with clear geometry, clean topology, and sensible textures. For complex scenes, provide detailed prompts to achieve better results.</div>
+      </details>
+
+      <details class="details-card">
+        <summary>What should I do if generation fails?</summary>
+        <div style="margin-top:8px;">Check whether your prompt is clear and specific, confirm the uploaded image is sharp and in a supported format, and ensure a stable network connection. If problems persist, contact support or try generating again.</div>
+      </details>
+
+      <details class="details-card">
+        <summary>How many times can I download a model?</summary>
+        <div style="margin-top:8px;">Generated models can be downloaded unlimited times within 24 hours. After 24 hours, models are automatically cleaned up. Please download and save the files you need in time.</div>
+      </details>
+
+      <details class="details-card">
+        <summary>Why does generation take so long?</summary>
+        <div style="margin-top:8px;">3D model generation is a complex AI computation process and usually takes 1–3 minutes. Duration depends on model complexity and server load. We continuously optimize our algorithms to improve speed.</div>
+      </details>
+
+    </div>
+  </section>
+
+<footer>
+  <div class="container">
+    <p>&copy; 2023 Polly. All rights reserved.</p>
+    <div class="footer-links contact-row">
+      <a href="mailto:support@polly3d.com" aria-label="Email support@polly3d.com">support@polly3d.com</a>
+      <a href="tel:8888888888" aria-label="Phone 888-888-8888">888-888-8888</a>
+    </div>
+    <div class="footer-list">
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="terms.html">Terms of Use</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

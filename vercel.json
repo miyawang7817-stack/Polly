@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "gallery.html", "use": "@vercel/static" },
+    { "src": "faq.html", "use": "@vercel/static" },
+    { "src": "privacy.html", "use": "@vercel/static" },
+    { "src": "terms.html", "use": "@vercel/static" }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
+}

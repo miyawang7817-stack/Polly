@@ -1,0 +1,420 @@
+// GLB 模型图库：为每个卡片生成缩略图、支持 3D 预览与 GLB 下载。
+
+const gridEl = document.getElementById('gallery-grid');
+const modalEl = document.getElementById('model-modal');
+const modalCloseEl = document.getElementById('modal-close');
+const modal3DContainer = document.getElementById('modal-3d-container');
+const modalDownloadGlbBtn = document.getElementById('modal-download-glb');
+const modalDownloadSnapshotBtn = document.getElementById('modal-download-snapshot');
+
+function isThreeAvailable() {
+  return typeof window.THREE !== 'undefined' && THREE.GLTFLoader && THREE.OrbitControls;
+}
+
+// 使用提供的全部灵感 GLB：来自项目根目录
+const GLB_PATHS = [
+  'inspiration-1.glb',
+  'inspiration-2.glb',
+  'inspiration-3.glb',
+  'inspiration-4.glb',
+  'inspiration-5 (1).glb',
+  'inspiration-6.glb',
+  'inspiration-7.glb',
+  'inspiration-8.glb',
+  'inspiration-9.glb',
+  'inspiration-10.glb',
+  'inspiration-11.glb',
+  'inspiration-12.glb',
+  '775e1869-a572-425d-b570-1b5c889e85f7.glb',
+];
+
+function titleFromPath(p){
+  const name = (p || '').split('/').pop() || p;
+  const base = name.replace(/\.(glb|crdownload)$/i,'');
+  const m = base.match(/(\d+)/);
+  const num = m ? m[1] : '';
+  const suffix = /\.crdownload$/i.test(name) ? ' (未完成)' : '';
+  return num ? `Inspiration ${num}${suffix}` : `${base}${suffix}`;
+}
+
+function categoryFromPath(p){
+  const name = (p || '').split('/').pop() || p;
+  const base = name.replace(/\.(glb|crdownload)$/i,'');
+  const m = base.match(/(\d+)/);
+  const num = m ? parseInt(m[1], 10) : NaN;
+  // 指定 UUID 文件归入 Helmet 分类
+  if (/775e1869-a572-425d-b570-1b5c889e85f7\.glb$/i.test(name)) return 'helmet';
+  // Role 分类：1、3、7、8、9、10、12
+  const roleSet = new Set([1,3,7,8,9,10,12]);
+  if (roleSet.has(num)) return 'role';
+  // Car 分类：2、4
+  if (num === 2 || num === 4) return 'car';
+  // 其他归为 Object
+  return 'object';
+}
+
+// Gallery 展示全部提供的 GLB 文件（将 2 和 4 分类为 car）
+const models = GLB_PATHS.map((p) => ({ title: titleFromPath(p), glb: p, category: categoryFromPath(p) }));
+
+let currentFilter = 'all';
+let visibleCount = 6; // initial cards
+const pageStep = 4;   // load more step
+let likes = {};
+let lastFilteredItems = [];
+let currentModalIndex = -1;
+let io; // IntersectionObserver for infinite scroll
+let isAutoLoading = false;
+
+function makeLighting(scene) {
+  scene.background = new THREE.Color(0xffffff);
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x888888, 0.7);
+  hemiLight.position.set(0, 1, 0);
+  scene.add(hemiLight);
+
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  keyLight.position.set(2, 3, 4);
+  keyLight.castShadow = false;
+  scene.add(keyLight);
+
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+  fillLight.position.set(-3, 2, -2);
+  scene.add(fillLight);
+
+  const rimLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  rimLight.position.set(0, 5, -5);
+  scene.add(rimLight);
+}
+
+function createRenderer(width, height, preserve = true) {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: preserve });
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.35;
+  renderer.physicallyCorrectLights = true;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(width, height);
+  return renderer;
+}
+
+function generateThumbnailDataURL(glbPath, yaw = 0, pitch = Math.PI / 6, width = 256, height = 160) {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+  const renderer = createRenderer(width, height);
+
+  makeLighting(scene);
+
+  const loader = new THREE.GLTFLoader();
+  return new Promise((resolve, reject) => {
+    loader.load(glbPath, (gltf) => {
+      const root = gltf.scene;
+      scene.add(root);
+
+      const box = new THREE.Box3().setFromObject(root);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+      root.position.sub(center);
+      const maxSide = Math.max(size.x, size.y, size.z);
+      const scale = 1.5 / maxSide;
+      root.scale.setScalar(scale);
+
+      const radius = 2.8;
+      const target = new THREE.Vector3(0, 0, 0);
+      camera.position.set(
+        target.x + radius * Math.cos(pitch) * Math.cos(yaw),
+        target.y + radius * Math.sin(pitch),
+        target.z + radius * Math.cos(pitch) * Math.sin(yaw)
+      );
+      camera.lookAt(target);
+
+      renderer.render(scene, camera);
+      resolve(renderer.domElement.toDataURL('image/png'));
+      renderer.dispose();
+    }, undefined, (err) => {
+      reject(err);
+      renderer.dispose();
+    });
+  });
+}
+
+function open3DModal(glbPath) {
+  if (!modalEl || !modal3DContainer) return;
+  modalEl.style.display = 'block';
+  modal3DContainer.innerHTML = '';
+
+  // Use model-viewer to preview (CSP-friendly)
+  const mv = document.createElement('model-viewer');
+  mv.setAttribute('src', glbPath);
+  mv.setAttribute('camera-controls', '');
+  mv.setAttribute('shadow-intensity', '0');
+  mv.setAttribute('exposure', '1.0');
+  // Auto reveal
+  mv.setAttribute('reveal', 'auto');
+  mv.style.width = '100%';
+  mv.style.height = '70vh';
+  mv.style.background = '#0f131a';
+  mv.style.setProperty('--poster-color', '#0f131a');
+  mv.style.setProperty('--progress-mask', 'none');
+  modal3DContainer.appendChild(mv);
+
+  // Error handling: show message when GLB fails to load
+  const errorHint = document.createElement('div');
+  errorHint.style.display = 'none';
+  errorHint.style.marginTop = '8px';
+  errorHint.style.color = '#d32f2f';
+  errorHint.style.font = '14px system-ui, -apple-system, Segoe UI, sans-serif';
+  errorHint.textContent = 'Model failed to load. Check GLB path or file integrity.';
+  modal3DContainer.appendChild(errorHint);
+
+  mv.addEventListener('error', () => {
+    errorHint.style.display = 'block';
+  });
+  mv.addEventListener('load', () => {
+    errorHint.style.display = 'none';
+  });
+
+  // Download: GLB enabled; snapshot disabled under strict CSP
+  if (modalDownloadGlbBtn) {
+    modalDownloadGlbBtn.disabled = false;
+    modalDownloadGlbBtn.onclick = () => downloadFile(glbPath);
+  }
+  if (modalDownloadSnapshotBtn) {
+    modalDownloadSnapshotBtn.disabled = true;
+    modalDownloadSnapshotBtn.onclick = null;
+  }
+
+  const _close = () => {
+    modalEl.style.display = 'none';
+    modal3DContainer.innerHTML = '';
+    if (modalDownloadGlbBtn) {
+      modalDownloadGlbBtn.disabled = true;
+      modalDownloadGlbBtn.onclick = null;
+    }
+    if (modalDownloadSnapshotBtn) {
+      modalDownloadSnapshotBtn.disabled = true;
+      modalDownloadSnapshotBtn.onclick = null;
+    }
+  };
+
+  if (modalCloseEl) modalCloseEl.onclick = _close;
+  modalEl.onclick = (e) => { if (e.target === modalEl) _close(); };
+
+  // Modal navigation buttons
+  const prevBtn = document.getElementById('modal-prev');
+  const nextBtn = document.getElementById('modal-next');
+  if (prevBtn) prevBtn.onclick = () => navigateModal(-1);
+  if (nextBtn) nextBtn.onclick = () => navigateModal(1);
+  // Keyboard navigation
+  const keyHandler = (ev) => {
+    if (ev.key === 'Escape') _close();
+    if (ev.key === 'ArrowLeft') navigateModal(-1);
+    if (ev.key === 'ArrowRight') navigateModal(1);
+  };
+  document.addEventListener('keydown', keyHandler, { once: true });
+}
+
+function downloadFile(path) {
+  const a = document.createElement('a');
+  a.href = path;
+  a.download = path.split('/').pop();
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function downloadSnapshot(renderer, filename) {
+  const dataURL = renderer.domElement.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = dataURL;
+  a.download = filename || 'snapshot.png';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function drawPlaceholderCanvas(canvasEl, title) {
+  try {
+    const w = canvasEl.width || 256;
+    const h = canvasEl.height || 160;
+    const ctx = canvasEl.getContext('2d');
+    if (!ctx) return;
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(1, '#f3f5f7');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#4a6cf7';
+    ctx.font = 'bold 16px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(title || 'GLB 预览', w / 2, h / 2 - 8);
+    ctx.fillStyle = '#6c757d';
+    ctx.font = '12px system-ui, -apple-system, Segoe UI, sans-serif';
+    ctx.fillText('点击预览加载 3D', w / 2, h / 2 + 16);
+  } catch (_) {
+    // ignore
+  }
+}
+
+async function renderGallery() {
+  if (!gridEl) return;
+  gridEl.innerHTML = '';
+  let filtered = currentFilter === 'all' ? models.slice() : models.filter(m => m.category === currentFilter);
+  lastFilteredItems = filtered;
+  const items = filtered.slice(0, visibleCount);
+  for (const item of items) {
+    const card = document.createElement('div');
+    card.className = 'gallery-item';
+
+    // 在卡片内嵌入 3D 预览（model-viewer）
+    const mv = document.createElement('model-viewer');
+    mv.setAttribute('src', item.glb);
+    mv.setAttribute('camera-controls', '');
+    mv.setAttribute('shadow-intensity', '0');
+    mv.setAttribute('exposure', '1.0');
+    mv.setAttribute('interaction-prompt-threshold', '0');
+    mv.setAttribute('reveal', 'auto');
+    mv.style.width = '100%';
+    mv.style.height = '280px';
+    mv.style.background = '#0f131a';
+    mv.style.setProperty('--poster-color', '#0f131a');
+    mv.style.setProperty('--progress-mask', 'none');
+
+    const title = document.createElement('div');
+    title.className = 'gallery-title';
+    title.textContent = item.title;
+
+    const actions = document.createElement('div');
+    actions.className = 'gallery-actions';
+
+    const downloadGlbBtn = document.createElement('button');
+    downloadGlbBtn.className = 'btn btn-primary';
+    downloadGlbBtn.textContent = 'Download GLB';
+    downloadGlbBtn.onclick = () => downloadFile(item.glb);
+
+    // Like (heart) toggle (SVG keeps size constant)
+    const likeBtn = document.createElement('button');
+    likeBtn.className = 'btn btn-icon like-btn';
+    const key = item.title;
+    const liked = !!likes[key];
+    likeBtn.innerHTML = '<svg class="icon-heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5c0-2.6 2.03-4.5 4.5-4.5 1.74 0 3.41 1.01 4.1 2.5.69-1.49 2.36-2.5 4.1-2.5 2.47 0 4.5 1.9 4.5 4.5 0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>';
+    if (liked) likeBtn.classList.add('liked');
+    likeBtn.setAttribute('aria-pressed', liked ? 'true' : 'false');
+    likeBtn.setAttribute('aria-label', liked ? 'Unlike' : 'Like');
+    likeBtn.onclick = () => {
+      const now = !likes[key];
+      likes[key] = now;
+      saveLikes();
+      likeBtn.setAttribute('aria-pressed', now ? 'true' : 'false');
+      likeBtn.setAttribute('aria-label', now ? 'Unlike' : 'Like');
+      likeBtn.classList.toggle('liked', now);
+    };
+
+    actions.appendChild(downloadGlbBtn);
+    actions.appendChild(likeBtn);
+
+    // 移除 poster，避免 Chrome 下白色信箱空区
+
+    // 错误提示：当 GLB 不可用（如 .crdownload）时显示
+    const errorHint = document.createElement('div');
+    errorHint.className = 'gallery-error';
+    errorHint.textContent = '模型未就绪或文件损坏';
+    errorHint.style.display = 'none';
+    mv.addEventListener('error', () => { errorHint.style.display = 'block'; });
+    card.appendChild(mv);
+    card.appendChild(errorHint);
+    card.appendChild(title);
+    card.appendChild(actions);
+    // 立即绘制本地 2D 占位缩略图，确保不空白
+    gridEl.appendChild(card);
+
+    // Strict CSP: keep local placeholder, no external thumbnail generation.
+  }
+}
+
+function makePlaceholderDataURL(title, w = 256, h = 160) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, w, h);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(1, '#f3f5f7');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#4a6cf7';
+  ctx.font = 'bold 16px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(title || 'GLB 预览', w / 2, h / 2 - 8);
+  ctx.fillStyle = '#6c757d';
+  ctx.font = '12px system-ui, -apple-system, Segoe UI, sans-serif';
+  ctx.fillText('Click to preview 3D', w / 2, h / 2 + 16);
+  return canvas.toDataURL('image/png');
+}
+
+// Setup filter chips and Load More
+function setupFiltersAndLoadMore(){
+  const chips = document.querySelectorAll('#gallery-filters .filter-chip');
+  const sentinel = document.getElementById('gallery-sentinel');
+  const loader = document.getElementById('gallery-loader');
+  // restore likes
+  try { likes = JSON.parse(localStorage.getItem('galleryLikes') || '{}'); } catch(_) {}
+  chips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      chips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentFilter = chip.getAttribute('data-filter') || 'all';
+      visibleCount = 6; // reset pagination on filter change
+      if (loader) { loader.style.display = 'none'; loader.setAttribute('aria-busy','false'); }
+      renderGallery();
+    });
+  });
+  // Infinite scroll via IntersectionObserver
+  if ('IntersectionObserver' in window && sentinel){
+    if (io) io.disconnect();
+    io = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (!entry || !entry.isIntersecting) return;
+      if (isAutoLoading) return;
+      // If all items already visible, stop observing
+      const total = lastFilteredItems.length;
+      if (visibleCount >= total) { io.disconnect(); return; }
+      isAutoLoading = true;
+      if (loader) { loader.style.display = 'block'; loader.setAttribute('aria-busy','true'); }
+      visibleCount = Math.min(visibleCount + pageStep, total);
+      renderGallery();
+      // small delay to prevent rapid retrigger
+      setTimeout(() => {
+        isAutoLoading = false;
+        if (loader) { loader.style.display = 'none'; loader.setAttribute('aria-busy','false'); }
+      }, 200);
+    }, { root: null, rootMargin: '200px 0px 400px 0px', threshold: 0 });
+    io.observe(sentinel);
+  }
+  // Sorting removed
+}
+
+function ensureRender() {
+  try {
+    renderGallery();
+    setupFiltersAndLoadMore();
+  } catch (_) {}
+}
+
+function saveLikes(){
+  try { localStorage.setItem('galleryLikes', JSON.stringify(likes)); } catch(_) {}
+}
+
+function navigateModal(step){
+  if (!Array.isArray(lastFilteredItems) || lastFilteredItems.length === 0) return;
+  if (currentModalIndex < 0) currentModalIndex = 0;
+  currentModalIndex = (currentModalIndex + step + lastFilteredItems.length) % lastFilteredItems.length;
+  const item = lastFilteredItems[currentModalIndex];
+  if (item) open3DModal(item.glb);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', ensureRender);
+} else {
+  ensureRender();
+}
