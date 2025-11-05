@@ -43,7 +43,38 @@ module.exports = async (req, res) => {
       req.on('error', reject);
     });
 
-    const upstreamUrl = process.env.BACKEND_GENERATE_URL || 'http://111.229.71.58:8086/generate';
+    // Normalize BACKEND_GENERATE_URL to avoid copy-paste artifacts (quotes/backticks/bullets)
+    const defaultUrl = 'http://111.229.71.58:8086/generate';
+    const rawEnv = process.env.BACKEND_GENERATE_URL;
+    const normalizeUrl = (val) => {
+      if (!val) return '';
+      let s = String(val).trim();
+      // Remove leading bullets like "- " or "• "
+      s = s.replace(/^\s*[-•–]\s*/, '');
+      // Strip wrapping quotes/backticks
+      s = s.replace(/^['"`]+/, '').replace(/['"`]+$/, '');
+      // Remove trailing commas
+      s = s.replace(/[,;]+\s*$/, '');
+      // If missing scheme, assume http
+      if (s && !/^https?:\/\//i.test(s)) s = 'http://' + s;
+      return s;
+    };
+    let upstreamUrl = normalizeUrl(rawEnv) || defaultUrl;
+    // Validate URL
+    try {
+      // eslint-disable-next-line no-new
+      new URL(upstreamUrl);
+    } catch (e) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({
+        error: 'Invalid BACKEND_GENERATE_URL',
+        message: 'Failed to parse upstream URL: ' + String(e && e.message || e),
+        original: rawEnv || null,
+        normalized: upstreamUrl
+      }));
+      return;
+    }
 
     const headers = {
       'Content-Type': 'application/json',
