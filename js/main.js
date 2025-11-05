@@ -310,6 +310,148 @@ function generate3DModel() {
     }
     previewLoadingText && (previewLoadingText.textContent = 'Generating...');
 
+    // Async task mode: create task and poll status until completion
+    const asyncMode = (searchParams.get('async') === '1') || (window.POLLY_ASYNC_MODE === true);
+    if (asyncMode) {
+      const baseHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      };
+      const extraHeaders = (window.POLLY_AUTH && typeof window.POLLY_AUTH.buildExtraHeaders === 'function')
+        ? window.POLLY_AUTH.buildExtraHeaders()
+        : ((window.POLLY_AUTH && typeof window.POLLY_AUTH.buildBypassHeaders === 'function') ? window.POLLY_AUTH.buildBypassHeaders() : {});
+      const createUrl = (window.POLLY_API && typeof window.POLLY_API.url === 'function')
+        ? window.POLLY_API.url('tasks')
+        : '/tasks';
+      const statusUrlFromId = (id) => {
+        if (window.POLLY_API && typeof window.POLLY_API.url === 'function') {
+          return window.POLLY_API.url('tasks/' + String(id));
+        }
+        return '/tasks/' + String(id);
+      };
+      const fetchOptsCreate = {
+        method: 'POST',
+        headers: Object.assign({}, baseHeaders, extraHeaders),
+        body: JSON.stringify(requestData),
+        signal: controller.signal,
+        cache: 'no-store',
+        credentials: 'omit',
+        mode: 'cors'
+      };
+
+      previewLoadingText && (previewLoadingText.textContent = 'Submitting task...');
+      const startCreate = Date.now();
+      fetch(createUrl, fetchOptsCreate)
+        .then(async (res) => {
+          const duration = Date.now() - startCreate;
+          window.POLLY_DEBUG_LAST = window.POLLY_DEBUG_LAST || { attempts: [] };
+          window.POLLY_DEBUG_LAST.attempts.push({ url: createUrl, status: res.status, statusText: res.statusText, durationMs: duration });
+          if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`Task create failed: HTTP ${res.status} ${res.statusText}${text ? ' - ' + text : ''}`);
+          }
+          const data = await res.json().catch(() => ({}));
+          const taskId = data.task_id || data.id || data.job_id || data.jobId;
+          if (!taskId) throw new Error('No task id returned from backend');
+          // Start polling
+          let pollIntervalMs = 5000;
+          let timer = null;
+          let overallStart = Date.now();
+          previewLoadingText && (previewLoadingText.textContent = 'Queued...');
+          return await new Promise((resolve, reject) => {
+            const pollOnce = async () => {
+              if (Date.now() - overallStart > timeoutMs) {
+                return reject(new Error('Task polling timeout'));
+              }
+              const su = statusUrlFromId(taskId);
+              const startPoll = Date.now();
+              try {
+                const pollRes = await fetch(su, { method: 'GET', headers: Object.assign({}, extraHeaders), cache: 'no-store', mode: 'cors', signal: controller.signal });
+                const durationPoll = Date.now() - startPoll;
+                window.POLLY_DEBUG_LAST = window.POLLY_DEBUG_LAST || { attempts: [] };
+                window.POLLY_DEBUG_LAST.attempts.push({ url: su, status: pollRes.status, statusText: pollRes.statusText, durationMs: durationPoll });
+                const text = await pollRes.text();
+                let json = {};
+                try { json = JSON.parse(text); } catch (_) {}
+                // Backend status conventions: status/state: queued|processing|succeeded|completed|failed
+                const st = json.status || json.state || json.phase;
+                const eta = json.eta_seconds || json.eta || null;
+                if (previewLoadingText) {
+                  if (st === 'queued') previewLoadingText.textContent = 'Queued...';
+                  else if (st === 'processing' || st === 'running') previewLoadingText.textContent = 'Processing...';
+                  else if (eta && isFinite(eta)) previewLoadingText.textContent = `Processing... (≈ ${eta}s)`;
+                }
+                if (st === 'succeeded' || st === 'completed') {
+                  // Resolve result
+                  const url = json.result_url || json.glb_url || json.url;
+                  const base64 = (json.result && (json.result.glb_base64 || json.result.glb_data_url)) || json.glb_base64 || json.glb_data_url;
+                  if (url) {
+                    const bstart = Date.now();
+                    const bres = await fetch(url, { cache: 'no-store', mode: 'cors' });
+                    const bd = Date.now() - bstart;
+                    window.POLLY_DEBUG_LAST.attempts.push({ url, status: bres.status, statusText: bres.statusText, durationMs: bd });
+                    if (!bres.ok) {
+                      const t = await bres.text().catch(() => '');
+                      return reject(new Error(`Result fetch failed: HTTP ${bres.status} ${bres.statusText}${t ? ' - ' + t : ''}`));
+                    }
+                    const blob = await bres.blob();
+                    return resolve(blob);
+                  } else if (base64) {
+                    try {
+                      const raw = base64.includes(',') ? base64.split(',')[1] : base64;
+                      const bytes = atob(raw);
+                      const arr = new Uint8Array(bytes.length);
+                      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+                      const blob = new Blob([arr], { type: 'model/gltf-binary' });
+                      return resolve(blob);
+                    } catch (e) {
+                      return reject(new Error('Invalid base64 result from backend'));
+                    }
+                  } else if (json.result && json.result.bytes) {
+                    const blob = new Blob([json.result.bytes], { type: 'model/gltf-binary' });
+                    return resolve(blob);
+                  } else {
+                    return reject(new Error('No result in completed task'));
+                  }
+                }
+                if (st === 'failed' || st === 'error') {
+                  const msg = json.error || json.message || 'Task failed';
+                  return reject(new Error(msg));
+                }
+                // Continue polling
+                if (!timer) {
+                  timer = setInterval(pollOnce, pollIntervalMs);
+                }
+              } catch (e) {
+                return reject(e);
+              }
+            };
+            pollOnce();
+          });
+        })
+        .then(blob => {
+          if (timeoutId) clearTimeout(timeoutId);
+          const modelUrl = URL.createObjectURL(blob);
+          window.modelUrl = modelUrl;
+          loadGLBModel(modelUrl);
+          generateButton.disabled = false;
+          generateButton.textContent = 'Generate';
+          showNotification('Model generated successfully!', 'success');
+          updateDebugPanel();
+        })
+        .catch(err => {
+          if (timeoutId) clearTimeout(timeoutId);
+          console.error('Async flow error:', err);
+          setPreviewState('default');
+          generateButton.disabled = false;
+          generateButton.textContent = 'Generate';
+          const msg = (err && err.message) ? err.message : 'Failed to generate 3D model.';
+          showNotification(msg + ' Please try again.', 'error');
+          updateDebugPanel(err);
+        });
+      return;
+    }
+
     // Common fetch options
     const baseHeaders = {
         'Content-Type': 'application/json',
