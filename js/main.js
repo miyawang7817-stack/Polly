@@ -253,11 +253,22 @@ function generate3DModel() {
       ? window.POLLY_API.urlFrom(window.POLLY_API.FALLBACK_BASE, 'generate')
       : null;
 
-    // Timeout control
+    // Timeout control (configurable via URL ?timeout or global window.POLLY_TIMEOUT_MS)
     const controller = new AbortController();
-    const timeoutMs = 60000; // 60s to better tolerate generation
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    previewEstimateEl && (previewEstimateEl.textContent = '≈ 20–60s');
+    const searchParams = new URLSearchParams(window.location.search);
+    const timeoutOverrideStr = searchParams.get('timeout') || searchParams.get('timeoutMs');
+    const timeoutOverride = timeoutOverrideStr ? parseInt(timeoutOverrideStr, 10) : null;
+    const runtimeTimeout = (typeof window.POLLY_TIMEOUT_MS === 'number' && window.POLLY_TIMEOUT_MS > 0)
+      ? window.POLLY_TIMEOUT_MS
+      : null;
+    const timeoutMs = (timeoutOverride && timeoutOverride > 0)
+      ? timeoutOverride
+      : (runtimeTimeout || 180000); // default 3 min
+    let timeoutId = null;
+    if (timeoutMs && timeoutMs > 0 && isFinite(timeoutMs)) {
+      timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    }
+    previewEstimateEl && (previewEstimateEl.textContent = (timeoutMs >= 180000 ? '≈ 1–3 min' : '≈ 20–60s'));
     previewLoadingText && (previewLoadingText.textContent = 'Generating...');
 
     // Common fetch options
@@ -289,7 +300,7 @@ function generate3DModel() {
     // Try primary; on failure or timeout, try fallback once (if provided)
     makeRequestWithFallback(primaryUrl, fallbackUrl, fetchOpts)
       .then(blob => {
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
         const modelUrl = URL.createObjectURL(blob);
         window.modelUrl = modelUrl;
         loadGLBModel(modelUrl);
@@ -299,7 +310,7 @@ function generate3DModel() {
         updateDebugPanel();
       })
       .catch(err => {
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
         console.error('Error generating 3D model:', err);
         setPreviewState('default');
         generateButton.disabled = false;
