@@ -9,7 +9,13 @@
     if (!s) return '';
     return s.endsWith('/') ? s : s + '/';
   };
-  const base = normalize(window.POLLY_API_BASE || DEFAULT_BASE);
+  // Allow overriding via URL ?apiBase=... or <meta name="polly-api-base" content="...">
+  const search = new URLSearchParams(window.location.search);
+  const searchBase = search.get('apiBase');
+  const metaEl = document.querySelector('meta[name="polly-api-base"]');
+  const metaBase = metaEl && metaEl.getAttribute('content');
+  const chosenBase = window.POLLY_API_BASE || searchBase || metaBase || DEFAULT_BASE;
+  const base = normalize(chosenBase);
   const fallbackBase = normalize(window.POLLY_API_FALLBACK_BASE || '');
   window.POLLY_API = {
     BASE: base,

@@ -43,3 +43,33 @@ server {
 
 ## 打包上传（手动）
 可将 `image-to-3d-website` 目录压缩为 zip，然后在 Netlify/Vercel 的手动部署中上传。
+
+## 直连 HTTPS 后端（推荐用于生产）
+
+前端已支持通过运行时配置直连后端的 `POST /generate` 接口：
+
+- 配置方式（任选其一）：
+  - 在 `index.html` 顶部添加脚本：
+    - `<script>window.POLLY_API_BASE = 'https://api.yourdomain.com/';</script>`
+  - 使用 URL 参数：访问 `https://your.site/?apiBase=https://api.yourdomain.com/`
+  - 设置 meta 标签（已在页面中预置）：`<meta name="polly-api-base" content="https://api.yourdomain.com/">`
+
+- 后端 CORS 要求：
+  - 允许来源：`Access-Control-Allow-Origin: https://<你的.vercel.app>`（或你的自定义域名）
+  - 允许方法：`Access-Control-Allow-Methods: POST, OPTIONS`
+  - 允许头：`Access-Control-Allow-Headers: Content-Type, Accept`
+  - 预检：对 `OPTIONS /generate` 返回 `200` 并带上以上 CORS 响应头
+
+- 响应内容：
+  - 返回 GLB 二进制：`Content-Type: model/gltf-binary`
+  - 建议设置 `Content-Length` 和禁止缓存（或控制缓存）：`Cache-Control: no-store`
+
+- 时长与可靠性：
+  - 前端默认超时 60s，可在 `js/main.js` 中调整 `timeoutMs`
+  - 建议后端使用异步任务 + 轮询接口，避免前端长时间连接超时
+
+- 备用端点：
+  - 如需在主后端不可用时回退，可设置 `window.POLLY_API_FALLBACK_BASE = 'https://backup.yourdomain.com/'`
+  - 前端会在主请求失败后自动尝试一次备用端点
+
+> 注意：如果 Vercel 项目开启了 Deployment Protection，请关闭生产环境的保护，或改为直连不受保护的后端域名。临时测试可使用 Vercel 的保护绕过密钥，但不建议在公开生产环境中使用。
