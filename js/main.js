@@ -26,6 +26,7 @@ const previewEstimateEl = document.getElementById('preview-estimate-seconds');
 const debugPanel = document.getElementById('debug-panel');
 const debugContent = document.getElementById('debug-content');
 const isDebug = (new URLSearchParams(window.location.search).get('debug') === '1');
+const isMock = (new URLSearchParams(window.location.search).get('mock') === '1');
 // Show debug panel immediately when ?debug=1 is present
 if (isDebug && debugPanel && debugContent) {
   debugPanel.style.display = 'block';
@@ -198,6 +199,41 @@ function generate3DModel() {
     if (!imageData) {
         previewLoadingText && (previewLoadingText.textContent = 'Compressing image...');
         imageData = compressImageToDataURL(uploadedImage, 1280, 0.85);
+    }
+
+    // Mock mode: skip network, load a local sample GLB to verify frontend
+    if (isMock) {
+        previewLoadingText && (previewLoadingText.textContent = 'Loading sample model (mock)...');
+        try {
+            const start = Date.now();
+            // Use a bundled GLB from repo root
+            const sample = '/inspiration-1.glb';
+            loadGLBModel(sample);
+            const duration = Date.now() - start;
+            // Record a mock attempt for debug panel
+            window.POLLY_DEBUG_LAST = {
+              attempts: [{
+                url: 'mock://local-sample-glb',
+                status: 200,
+                statusText: 'OK (mock)',
+                durationMs: duration,
+                blobSize: null
+              }]
+            };
+            updateDebugPanel();
+            generateButton.disabled = false;
+            generateButton.textContent = 'Generate';
+            showNotification('Model generated successfully! (mock)', 'success');
+            return;
+        } catch (e) {
+            console.error('Mock load failed', e);
+            showNotification('Mock model load failed. Check local GLB files.', 'error');
+            setPreviewState('default');
+            generateButton.disabled = false;
+            generateButton.textContent = 'Generate';
+            updateDebugPanel(e);
+            return;
+        }
     }
     
     // Extract base64 data from the Data URL
