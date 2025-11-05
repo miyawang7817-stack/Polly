@@ -44,7 +44,8 @@ module.exports = async (req, res) => {
     });
 
     // Normalize BACKEND_GENERATE_URL to avoid copy-paste artifacts (quotes/backticks/bullets)
-    const defaultUrl = 'http://111.229.71.58:8086/generate';
+    // Use HTTPS by default to avoid mixed-content in browsers
+    const defaultUrl = 'https://111.229.71.58:8086/generate';
     const rawEnv = process.env.BACKEND_GENERATE_URL;
     const normalizeUrl = (val) => {
       if (!val) return '';
