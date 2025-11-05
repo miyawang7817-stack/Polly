@@ -100,31 +100,61 @@ module.exports = async (req, res) => {
     })();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), defaultTimeoutMs);
-    let upstreamResp;
-    try {
-      upstreamResp = await fetch(upstreamUrl, {
+    // Helper to perform upstream fetch
+    const doUpstreamFetch = async (url) => {
+      return await fetch(url, {
         method: 'POST',
         headers,
         body: bodyStr || '{}',
         signal: controller.signal
       });
+    };
+    let upstreamResp;
+    try {
+      upstreamResp = await doUpstreamFetch(upstreamUrl);
     } catch (fetchErr) {
-      clearTimeout(timeoutId);
-      // Map AbortError to a 504 with helpful diagnostics
-      const isAbort = fetchErr && fetchErr.name === 'AbortError';
-      const statusCode = isAbort ? 504 : 502;
-      const reasonText = isAbort ? `Upstream timeout after ${defaultTimeoutMs}ms` : `Upstream fetch error: ${String(fetchErr && fetchErr.message || fetchErr)}`;
-      const bodyInfo = `request_body_length=${(bodyStr || '').length}`;
-      const composed = [
-        `${reasonText} at <${upstreamUrl}>`,
-        bodyInfo
-      ].join('\n').trim();
-      res.statusCode = statusCode;
-      res.setHeader('Content-Type', 'text/plain');
-      res.setHeader('X-Proxy-Target', upstreamUrl);
-      if (isAbort) res.setHeader('Retry-After', '10');
-      res.end(composed);
-      return;
+      // Detect TLS/certificate errors when using HTTPS against an IP and fallback to HTTP
+      const msg = String((fetchErr && fetchErr.message) || fetchErr || '');
+      const code = String((fetchErr && fetchErr.code) || '');
+      const isTlsError = /TLS|CERT|SSL|self[- ]signed|verify|hostname|UNABLE_TO_VERIFY|CERT_/i.test(msg + ' ' + code);
+      const isHttps = /^https:\/\//i.test(upstreamUrl);
+      if (isTlsError && isHttps) {
+        const httpFallbackUrl = upstreamUrl.replace(/^https:/i, 'http:');
+        try {
+          upstreamResp = await doUpstreamFetch(httpFallbackUrl);
+          // Mark that HTTP fallback was used
+          upstreamUrl = httpFallbackUrl;
+        } catch (fallbackErr) {
+          clearTimeout(timeoutId);
+          const bodyInfo = `request_body_length=${(bodyStr || '').length}`;
+          const composed = [
+            `HTTPS TLS error at <${upstreamUrl}>: ${String((fetchErr && fetchErr.message) || fetchErr)}`,
+            `HTTP fallback failed at <${httpFallbackUrl}>: ${String((fallbackErr && fallbackErr.message) || fallbackErr)}`,
+            bodyInfo
+          ].join('\n').trim();
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'text/plain');
+          res.setHeader('X-Proxy-Target', httpFallbackUrl);
+          res.end(composed);
+          return;
+        }
+      } else {
+        clearTimeout(timeoutId);
+        const isAbort = fetchErr && fetchErr.name === 'AbortError';
+        const statusCode = isAbort ? 504 : 502;
+        const reasonText = isAbort ? `Upstream timeout after ${defaultTimeoutMs}ms` : `Upstream fetch error: ${String(fetchErr && fetchErr.message || fetchErr)}`;
+        const bodyInfo = `request_body_length=${(bodyStr || '').length}`;
+        const composed = [
+          `${reasonText} at <${upstreamUrl}>`,
+          bodyInfo
+        ].join('\n').trim();
+        res.statusCode = statusCode;
+        res.setHeader('Content-Type', 'text/plain');
+        res.setHeader('X-Proxy-Target', upstreamUrl);
+        if (isAbort) res.setHeader('Retry-After', '10');
+        res.end(composed);
+        return;
+      }
     }
     clearTimeout(timeoutId);
 
