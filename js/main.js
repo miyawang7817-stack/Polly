@@ -263,12 +263,17 @@ function generate3DModel() {
       : null;
     const timeoutMs = (timeoutOverride && timeoutOverride > 0)
       ? timeoutOverride
-      : (runtimeTimeout || 180000); // default 3 min
+      : (runtimeTimeout || 300000); // default 5 min
     let timeoutId = null;
     if (timeoutMs && timeoutMs > 0 && isFinite(timeoutMs)) {
       timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     }
-    previewEstimateEl && (previewEstimateEl.textContent = (timeoutMs >= 180000 ? '≈ 1–3 min' : '≈ 20–60s'));
+    if (previewEstimateEl) {
+      let estimateText = '≈ 20–60s';
+      if (timeoutMs >= 300000) estimateText = '≈ 3–5 min';
+      else if (timeoutMs >= 180000) estimateText = '≈ 1–3 min';
+      previewEstimateEl.textContent = estimateText;
+    }
     previewLoadingText && (previewLoadingText.textContent = 'Generating...');
 
     // Common fetch options
