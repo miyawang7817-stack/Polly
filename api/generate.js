@@ -1,12 +1,8 @@
 // Same-origin generate API for Vercel (@vercel/node)
-// Returns a bundled sample GLB to verify end-to-end flow without external backend.
-// Handles CORS preflight and sets appropriate headers.
-
-const fs = require('fs');
-const path = require('path');
+// Proxies the request to the real backend and returns the GLB binary.
 
 module.exports = async (req, res) => {
-  // Basic CORS (not required for same-origin, but helpful for clarity)
+  // Basic CORS (not required for same-origin page, but helpful for clarity)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
@@ -25,28 +21,44 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Read request body (image base64, face_count, etc.) — not used for mock
-    // This ensures clients sending JSON won’t cause errors.
+    // Read incoming JSON body (contains base64 image and face_count)
     const bodyStr = await new Promise((resolve, reject) => {
       let data = '';
       req.on('data', chunk => { data += chunk; });
       req.on('end', () => resolve(data));
       req.on('error', reject);
     });
-    // Try parse, but ignore failures
-    try { JSON.parse(bodyStr || '{}'); } catch (_) {}
 
-    // Serve a bundled GLB from repo root as generated result
-    const glbPath = path.join(process.cwd(), 'inspiration-1.glb');
-    const glb = fs.readFileSync(glbPath);
+    const upstreamUrl = process.env.BACKEND_GENERATE_URL || 'http://111.229.71.58:8086/generate';
 
-    res.setHeader('Content-Type', 'model/gltf-binary');
+    const upstreamResp = await fetch(upstreamUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'model/gltf-binary,application/octet-stream'
+      },
+      body: bodyStr || '{}'
+    });
+
+    // Forward non-OK as text for easier debugging on the client
+    if (!upstreamResp.ok) {
+      const txt = await upstreamResp.text().catch(() => '');
+      res.statusCode = upstreamResp.status;
+      res.setHeader('Content-Type', 'text/plain');
+      res.end(txt || `Upstream error ${upstreamResp.status}`);
+      return;
+    }
+
+    const ab = await upstreamResp.arrayBuffer();
+    const buf = Buffer.from(ab);
+    const ct = upstreamResp.headers.get('content-type') || 'model/gltf-binary';
+    res.setHeader('Content-Type', ct);
     res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('Content-Length', Buffer.byteLength(glb));
+    res.setHeader('Content-Length', buf.length);
     res.statusCode = 200;
-    res.end(glb);
+    res.end(buf);
   } catch (err) {
-    console.error('api/generate error:', err);
+    console.error('api/generate proxy error:', err);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ error: 'Internal Server Error', message: String(err && err.message || err) }));

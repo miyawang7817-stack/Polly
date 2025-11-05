@@ -198,7 +198,10 @@ function generate3DModel() {
     // Convert & compress image to base64 if not already done
     if (!imageData) {
         previewLoadingText && (previewLoadingText.textContent = 'Compressing image...');
-        imageData = compressImageToDataURL(uploadedImage, 1280, 0.85);
+        const baseIsSameOrigin = (window.POLLY_API && window.POLLY_API.BASE === '/');
+        const maxDim = baseIsSameOrigin ? 1024 : 1280; // reduce payload for same-origin proxy
+        const quality = baseIsSameOrigin ? 0.75 : 0.85;
+        imageData = compressImageToDataURL(uploadedImage, maxDim, quality);
     }
 
     // Mock mode: skip network, load a local sample GLB to verify frontend
@@ -294,13 +297,7 @@ function generate3DModel() {
         mode: 'cors'
     };
 
-    // If calling same-origin placeholder (/generate -> /api/generate),
-    // avoid sending large image payload to prevent 413 (FUNCTION_PAYLOAD_TOO_LARGE).
-    // This stub endpoint returns a bundled GLB regardless of body.
-    const isSameOriginGenerate = (typeof primaryUrl === 'string' && primaryUrl === '/generate');
-    if (isSameOriginGenerate) {
-        fetchOpts.body = JSON.stringify({ placeholder: true });
-    }
+    // Same-origin now proxies to real backend: send full JSON payload
 
     // Try primary; on failure or timeout, try fallback once (if provided)
     makeRequestWithFallback(primaryUrl, fallbackUrl, fetchOpts)
