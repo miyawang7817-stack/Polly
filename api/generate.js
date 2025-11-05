@@ -90,11 +90,41 @@ module.exports = async (req, res) => {
     if (process.env.BACKEND_X_API_KEY) headers['x-api-key'] = process.env.BACKEND_X_API_KEY;
     if (process.env.BACKEND_X_AUTH_TOKEN) headers['x-auth-token'] = process.env.BACKEND_X_AUTH_TOKEN;
 
-    const upstreamResp = await fetch(upstreamUrl, {
-      method: 'POST',
-      headers,
-      body: bodyStr || '{}'
-    });
+    // Upstream timeout to avoid platform killing long-running requests without a clear error
+    const defaultTimeoutMs = (() => {
+      const envVal = process.env.UPSTREAM_TIMEOUT_MS;
+      const n = envVal ? parseInt(envVal, 10) : NaN;
+      return Number.isFinite(n) && n > 0 ? n : 120000; // 120s default
+    })();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), defaultTimeoutMs);
+    let upstreamResp;
+    try {
+      upstreamResp = await fetch(upstreamUrl, {
+        method: 'POST',
+        headers,
+        body: bodyStr || '{}',
+        signal: controller.signal
+      });
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      // Map AbortError to a 504 with helpful diagnostics
+      const isAbort = fetchErr && fetchErr.name === 'AbortError';
+      const statusCode = isAbort ? 504 : 502;
+      const reasonText = isAbort ? `Upstream timeout after ${defaultTimeoutMs}ms` : `Upstream fetch error: ${String(fetchErr && fetchErr.message || fetchErr)}`;
+      const bodyInfo = `request_body_length=${(bodyStr || '').length}`;
+      const composed = [
+        `${reasonText} at <${upstreamUrl}>`,
+        bodyInfo
+      ].join('\n').trim();
+      res.statusCode = statusCode;
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('X-Proxy-Target', upstreamUrl);
+      if (isAbort) res.setHeader('Retry-After', '10');
+      res.end(composed);
+      return;
+    }
+    clearTimeout(timeoutId);
 
     // Forward non-OK as text for easier debugging on the client
     if (!upstreamResp.ok) {
