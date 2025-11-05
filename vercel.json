@@ -2,5 +2,7 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
-  "rewrites": []
+  "rewrites": [
+    { "source": "/generate", "destination": "/api/generate" }
+  ]
 }
