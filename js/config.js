@@ -5,6 +5,8 @@
 (function(){
   const DEFAULT_BASE = '/'; // same-origin (proxied by platform)
   const DEFAULT_GENERATE_PATH = 'generate';
+  const DEFAULT_TASKS_CREATE_PATH = 'tasks';
+  const DEFAULT_TASKS_STATUS_TEMPLATE = 'tasks/{id}';
   const normalize = (s) => {
     if (!s) return '';
     return s.endsWith('/') ? s : s + '/';
@@ -21,6 +23,11 @@
   const metaFallbackBase = metaFallbackEl && metaFallbackEl.getAttribute('content');
   const chosenFallbackBase = window.POLLY_API_FALLBACK_BASE || searchFallbackBase || metaFallbackBase || '';
   const fallbackBase = normalize(chosenFallbackBase);
+  // Async tasks endpoints (optional)
+  const tasksCreateOverride = window.POLLY_TASKS_CREATE_PATH || search.get('tasksCreate') || '';
+  const tasksStatusTemplateOverride = window.POLLY_TASKS_STATUS_TEMPLATE || search.get('tasksStatusTemplate') || '';
+  const tasksCreatePath = (tasksCreateOverride || DEFAULT_TASKS_CREATE_PATH);
+  const tasksStatusTemplate = (tasksStatusTemplateOverride || DEFAULT_TASKS_STATUS_TEMPLATE);
   window.POLLY_API = {
     BASE: base,
     FALLBACK_BASE: fallbackBase || null,
@@ -36,6 +43,19 @@
     },
     hasFallback(){
       return !!this.FALLBACK_BASE;
+    },
+    // Async tasks helpers (optional)
+    TASKS_CREATE_PATH: tasksCreatePath,
+    TASKS_STATUS_TEMPLATE: tasksStatusTemplate,
+    taskCreateUrl(){
+      return this.url(this.TASKS_CREATE_PATH);
+    },
+    taskStatusUrl(id){
+      const tmpl = String(this.TASKS_STATUS_TEMPLATE || '').replace('{id}', String(id));
+      return this.url(tmpl);
+    },
+    hasTasks(){
+      return !!(this.TASKS_CREATE_PATH && this.TASKS_STATUS_TEMPLATE);
     }
   };
   // Optional: Vercel Deployment Protection bypass (for testing/automation only)

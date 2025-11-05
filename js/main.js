@@ -320,10 +320,13 @@ function generate3DModel() {
       const extraHeaders = (window.POLLY_AUTH && typeof window.POLLY_AUTH.buildExtraHeaders === 'function')
         ? window.POLLY_AUTH.buildExtraHeaders()
         : ((window.POLLY_AUTH && typeof window.POLLY_AUTH.buildBypassHeaders === 'function') ? window.POLLY_AUTH.buildBypassHeaders() : {});
-      const createUrl = (window.POLLY_API && typeof window.POLLY_API.url === 'function')
-        ? window.POLLY_API.url('tasks')
-        : '/tasks';
+      const createUrl = (window.POLLY_API && typeof window.POLLY_API.taskCreateUrl === 'function')
+        ? window.POLLY_API.taskCreateUrl()
+        : ((window.POLLY_API && typeof window.POLLY_API.url === 'function') ? window.POLLY_API.url('tasks') : '/tasks');
       const statusUrlFromId = (id) => {
+        if (window.POLLY_API && typeof window.POLLY_API.taskStatusUrl === 'function') {
+          return window.POLLY_API.taskStatusUrl(id);
+        }
         if (window.POLLY_API && typeof window.POLLY_API.url === 'function') {
           return window.POLLY_API.url('tasks/' + String(id));
         }
@@ -348,6 +351,35 @@ function generate3DModel() {
           window.POLLY_DEBUG_LAST.attempts.push({ url: createUrl, status: res.status, statusText: res.statusText, durationMs: duration });
           if (!res.ok) {
             const text = await res.text().catch(() => '');
+            // If tasks endpoint not found, gracefully fallback to sync /generate
+            if (res.status === 404) {
+              previewLoadingText && (previewLoadingText.textContent = 'Async unavailable, switching to direct generate...');
+              // Reuse sync flow
+              return makeRequestWithFallback(primaryUrl, fallbackUrl, fetchOpts)
+                .then(blob => {
+                  if (timeoutId) clearTimeout(timeoutId);
+                  const modelUrl = URL.createObjectURL(blob);
+                  window.modelUrl = modelUrl;
+                  loadGLBModel(modelUrl);
+                  generateButton.disabled = false;
+                  generateButton.textContent = 'Generate';
+                  showNotification('Model generated successfully! (sync fallback)', 'success');
+                  updateDebugPanel();
+                  // Prevent subsequent then from running
+                  return Promise.reject('__SYNC_FALLBACK_DONE__');
+                })
+                .catch(err => {
+                  if (timeoutId) clearTimeout(timeoutId);
+                  console.error('Fallback sync flow error:', err);
+                  setPreviewState('default');
+                  generateButton.disabled = false;
+                  generateButton.textContent = 'Generate';
+                  const msg = (err && err.message) ? err.message : 'Failed to generate 3D model.';
+                  showNotification(msg + ' Please try again.', 'error');
+                  updateDebugPanel(err);
+                  return Promise.reject('__SYNC_FALLBACK_DONE__');
+                });
+            }
             throw new Error(`Task create failed: HTTP ${res.status} ${res.statusText}${text ? ' - ' + text : ''}`);
           }
           const data = await res.json().catch(() => ({}));
