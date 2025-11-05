@@ -28,6 +28,9 @@ const GLB_PATHS = [
   '775e1869-a572-425d-b570-1b5c889e85f7.glb',
 ];
 
+// 在启用 cleanUrls 时，/gallery 会作为路径前缀；确保 GLB 使用根相对路径
+const GLB_ROOT_PATHS = GLB_PATHS.map(p => p.startsWith('/') ? p : '/' + p);
+
 function titleFromPath(p){
   const name = (p || '').split('/').pop() || p;
   const base = name.replace(/\.(glb|crdownload)$/i,'');
@@ -54,7 +57,7 @@ function categoryFromPath(p){
 }
 
 // Gallery 展示全部提供的 GLB 文件（将 2 和 4 分类为 car）
-const models = GLB_PATHS.map((p) => ({ title: titleFromPath(p), glb: p, category: categoryFromPath(p) }));
+const models = GLB_ROOT_PATHS.map((p) => ({ title: titleFromPath(p), glb: p, category: categoryFromPath(p) }));
 
 let currentFilter = 'all';
 let visibleCount = 6; // initial cards
