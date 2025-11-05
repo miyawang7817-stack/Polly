@@ -26,6 +26,11 @@ const previewEstimateEl = document.getElementById('preview-estimate-seconds');
 const debugPanel = document.getElementById('debug-panel');
 const debugContent = document.getElementById('debug-content');
 const isDebug = (new URLSearchParams(window.location.search).get('debug') === '1');
+// Show debug panel immediately when ?debug=1 is present
+if (isDebug && debugPanel && debugContent) {
+  debugPanel.style.display = 'block';
+  debugContent.textContent = 'Debug mode is ON. Upload an image and click Generate to capture request details here.';
+}
 
 // Three.js variables
 let scene, camera, renderer, controls, model, wireframeMaterial;
