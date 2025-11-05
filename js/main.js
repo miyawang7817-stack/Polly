@@ -551,7 +551,22 @@ function compressImageToDataURL(imgEl, maxDim = 1280, quality = 0.85) {
 async function makeRequestWithFallback(primaryUrl, fallbackUrl, opts) {
     const tryFetch = async (url) => {
         const start = Date.now();
-        const res = await fetch(url, opts);
+        let res;
+        try {
+          res = await fetch(url, opts);
+        } catch (err) {
+          const duration = Date.now() - start;
+          const attempt = {
+            url,
+            status: 0,
+            statusText: (err && err.name) ? err.name : 'FetchError',
+            durationMs: duration,
+            responseTextSample: (err && err.message) ? String(err.message).slice(0, 2000) : ''
+          };
+          window.POLLY_DEBUG_LAST = window.POLLY_DEBUG_LAST || { attempts: [] };
+          window.POLLY_DEBUG_LAST.attempts.push(attempt);
+          throw err;
+        }
         const duration = Date.now() - start;
         const attempt = {
             url,
@@ -590,23 +605,26 @@ function updateDebugPanel(err) {
     }
     debugPanel.style.display = 'block';
     const last = window.POLLY_DEBUG_LAST;
-    if (!last || !last.attempts || last.attempts.length === 0) {
-        debugContent.textContent = 'No request attempts captured.';
-        return;
-    }
     const lines = [];
     lines.push(`[${new Date().toLocaleString()}] Attempts:`);
-    last.attempts.forEach((a, i) => {
-        lines.push(`#${i+1}`);
-        lines.push(`URL: ${a.url}`);
-        lines.push(`Status: ${a.status} ${a.statusText}`);
-        if (typeof a.blobSize === 'number') lines.push(`Blob size: ${a.blobSize} bytes`);
-        if (a.responseTextSample) lines.push(`Response text sample:\n${a.responseTextSample}`);
-        lines.push(`Duration: ${a.durationMs} ms`);
-        lines.push('');
-    });
-    if (err && err.message) {
-        lines.push(`Error: ${err.message}`);
+    if (last && last.attempts && last.attempts.length > 0) {
+      last.attempts.forEach((a, i) => {
+          lines.push(`#${i+1}`);
+          lines.push(`URL: ${a.url}`);
+          lines.push(`Status: ${a.status} ${a.statusText}`);
+          if (typeof a.blobSize === 'number') lines.push(`Blob size: ${a.blobSize} bytes`);
+          if (a.responseTextSample) lines.push(`Response text sample:\n${a.responseTextSample}`);
+          lines.push(`Duration: ${a.durationMs} ms`);
+          lines.push('');
+      });
+    } else {
+      lines.push('No request attempts captured.');
+      lines.push('');
+    }
+    if (err) {
+      const errName = err.name || 'Error';
+      const errMsg = err.message || String(err);
+      lines.push(`Error: ${errName} - ${errMsg}`);
     }
     debugContent.textContent = lines.join('\n');
 }
