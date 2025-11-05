@@ -100,14 +100,34 @@ module.exports = async (req, res) => {
     })();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), defaultTimeoutMs);
+    // Optional: allow insecure TLS (skip cert verification) via env for HTTPS targets
+    // BACKEND_INSECURE=1 enables this. Prefer proper certificates in production.
+    let dispatcher = undefined;
+    const wantInsecure = String(process.env.BACKEND_INSECURE || '').trim().toLowerCase();
+    const isInsecureEnabled = (wantInsecure === '1' || wantInsecure === 'true' || wantInsecure === 'yes');
+    if (isInsecureEnabled) {
+      try {
+        // Node 18+ global fetch is powered by undici; use Agent to disable verification safely
+        const { Agent } = require('undici');
+        dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
+      } catch (_) {
+        // As a last resort, relax global TLS (not recommended). Only set if undici agent fails.
+        try { process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; } catch (_) {}
+      }
+    }
     // Helper to perform upstream fetch
     const doUpstreamFetch = async (url) => {
-      return await fetch(url, {
+      const opts = {
         method: 'POST',
         headers,
         body: bodyStr || '{}',
         signal: controller.signal
-      });
+      };
+      if (dispatcher && /^https:\/\//i.test(url)) {
+        // Only attach dispatcher for HTTPS
+        opts.dispatcher = dispatcher;
+      }
+      return await fetch(url, opts);
     };
     let upstreamResp;
     try {

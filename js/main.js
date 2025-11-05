@@ -27,6 +27,34 @@ const debugPanel = document.getElementById('debug-panel');
 const debugContent = document.getElementById('debug-content');
 const isDebug = (new URLSearchParams(window.location.search).get('debug') === '1');
 const isMock = (new URLSearchParams(window.location.search).get('mock') === '1');
+// Login elements
+const loginLink = document.getElementById('login-link');
+const loginModal = document.getElementById('login-modal');
+const loginClose = document.getElementById('login-close');
+const loginError = document.getElementById('login-error');
+// Step containers
+const loginStepSelect = document.getElementById('login-step-select');
+const loginStepForms = document.getElementById('login-step-forms');
+const loginBack = document.getElementById('login-back');
+const selectEmailOrPhone = document.getElementById('select-email-or-phone');
+const selectApple = document.getElementById('select-apple');
+const selectGoogle = document.getElementById('select-google');
+// Tabs & OTP elements
+const tabEmailOtp = document.getElementById('tab-email-otp');
+const tabSmsOtp = document.getElementById('tab-sms-otp');
+const formPassword = document.getElementById('login-form-password');
+const formEmailOtp = document.getElementById('login-form-email-otp');
+const formSmsOtp = document.getElementById('login-form-sms-otp');
+const googleLoginBtn = document.getElementById('google-login');
+const emailOtpEmail = document.getElementById('email-otp-email');
+const emailOtpSend = document.getElementById('email-otp-send');
+const emailOtpCode = document.getElementById('email-otp-code');
+const emailOtpLogin = document.getElementById('email-otp-login');
+const smsCountry = document.getElementById('sms-country');
+const smsOtpPhone = document.getElementById('sms-otp-phone');
+const smsOtpSend = document.getElementById('sms-otp-send');
+const smsOtpCode = document.getElementById('sms-otp-code');
+const smsOtpLogin = document.getElementById('sms-otp-login');
 // Show debug panel immediately when ?debug=1 is present
 if (isDebug && debugPanel && debugContent) {
   debugPanel.style.display = 'block';
@@ -50,6 +78,163 @@ uploadClose && uploadClose.addEventListener('click', resetUpload);
  wireframeModeBtn && wireframeModeBtn.addEventListener('click', () => setModelMode('wireframe'));
  resetViewBtn && resetViewBtn.addEventListener('click', resetView);
  downloadBtn && downloadBtn.addEventListener('click', downloadModel);
+// Login events
+loginLink && loginLink.addEventListener('click', (e) => { e.preventDefault(); openLoginModal(); });
+loginClose && loginClose.addEventListener('click', closeLoginModal);
+// Step selection
+selectEmailOrPhone && selectEmailOrPhone.addEventListener('click', () => { showFormsStep(); showLoginTab('sms-otp'); });
+selectApple && selectApple.addEventListener('click', loginWithApple);
+selectGoogle && selectGoogle.addEventListener('click', loginWithGoogle);
+loginBack && loginBack.addEventListener('click', showSelectStep);
+// Tabs
+tabEmailOtp && tabEmailOtp.addEventListener('click', () => showLoginTab('email-otp'));
+tabSmsOtp && tabSmsOtp.addEventListener('click', () => showLoginTab('sms-otp'));
+// Email OTP
+emailOtpSend && emailOtpSend.addEventListener('click', requestEmailCode);
+emailOtpLogin && emailOtpLogin.addEventListener('click', loginWithEmailCode);
+// SMS OTP
+smsOtpSend && smsOtpSend.addEventListener('click', requestSmsCode);
+smsOtpLogin && smsOtpLogin.addEventListener('click', loginWithSmsCode);
+// Google
+// (Google handled by selectGoogle)
+
+function isAuthenticated() {
+  try {
+    const token = localStorage.getItem('POLLY_AUTH_TOKEN');
+    return !!(token && token.length > 0);
+  } catch (_) { return false; }
+}
+
+function setAuthHeaderFromStorage() {
+  try {
+    const token = localStorage.getItem('POLLY_AUTH_TOKEN');
+    if (token) {
+      window.POLLY_AUTH = window.POLLY_AUTH || { CUSTOM_HEADERS: {} };
+      window.POLLY_AUTH.CUSTOM_HEADERS = window.POLLY_AUTH.CUSTOM_HEADERS || {};
+      window.POLLY_AUTH.CUSTOM_HEADERS['Authorization'] = 'Bearer ' + token;
+    }
+  } catch (_) {}
+}
+
+function openLoginModal() {
+  if (loginModal) {
+    loginError && (loginError.style.display = 'none');
+    loginModal.style.display = 'flex';
+    showSelectStep();
+  }
+}
+
+function closeLoginModal() {
+  if (loginModal) loginModal.style.display = 'none';
+}
+
+function showLoginTab(name){
+  if (!formEmailOtp || !formSmsOtp) return;
+  formEmailOtp.style.display = (name === 'email-otp') ? 'flex' : 'none';
+  formSmsOtp.style.display = (name === 'sms-otp') ? 'flex' : 'none';
+}
+
+function showSelectStep(){
+  if (!loginStepSelect || !loginStepForms) return;
+  loginStepSelect.style.display = 'block';
+  loginStepForms.style.display = 'none';
+}
+
+function showFormsStep(){
+  if (!loginStepSelect || !loginStepForms) return;
+  loginStepSelect.style.display = 'none';
+  loginStepForms.style.display = 'block';
+}
+
+// Disable continue buttons until code present
+emailOtpCode && emailOtpCode.addEventListener('input', () => { emailOtpLogin.disabled = !(emailOtpCode.value && emailOtpCode.value.trim().length > 0); });
+smsOtpCode && smsOtpCode.addEventListener('input', () => { smsOtpLogin.disabled = !(smsOtpCode.value && smsOtpCode.value.trim().length > 0); });
+
+async function requestEmailCode(){
+  const email = emailOtpEmail?.value?.trim();
+  if (!email) return setLoginError('Please enter email');
+  try {
+    emailOtpSend.disabled = true;
+    const url = (window.POLLY_API?.url) ? window.POLLY_API.url('request-email-code') : '/request-email-code';
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ email }) });
+    const txt = await res.text(); let json={}; try{ json = JSON.parse(txt); }catch(_){}
+    if (!res.ok) throw new Error(json.error || 'Failed to send verification code');
+    showNotification('Verification code sent to email', 'success');
+  } catch(e){ setLoginError(e.message || 'Send failed'); }
+  finally { emailOtpSend.disabled = false; }
+}
+
+async function loginWithEmailCode(){
+  const email = emailOtpEmail?.value?.trim();
+  const code = emailOtpCode?.value?.trim();
+  if (!email || !code) return setLoginError('Please enter email and verification code');
+  try {
+    const url = (window.POLLY_API?.url) ? window.POLLY_API.url('login-email-code') : '/login-email-code';
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ email, code }) });
+    const txt = await res.text(); let json={}; try{ json = JSON.parse(txt); }catch(_){}
+    if (!res.ok) throw new Error(json.error || 'Verification code sign-in failed');
+    const token = json.token || json.access_token || (json.data && (json.data.token || json.data.access_token)) || '';
+    if (!token) throw new Error('No token returned');
+    try { localStorage.setItem('POLLY_AUTH_TOKEN', token); } catch(_){}
+    setAuthHeaderFromStorage();
+    closeLoginModal();
+    showNotification('Signed in successfully', 'success');
+    if (generateButton) { generateButton.disabled = false; generateButton.textContent = 'Generate'; }
+  } catch(e){ setLoginError(e.message || 'Sign-in failed'); }
+}
+
+async function requestSmsCode(){
+  let phone = smsOtpPhone?.value?.trim();
+  const cc = smsCountry?.value || '';
+  if (cc) phone = `${cc}${phone || ''}`;
+  if (!phone) return setLoginError('Please enter phone number');
+  try {
+    smsOtpSend.disabled = true;
+    const url = (window.POLLY_API?.url) ? window.POLLY_API.url('request-sms-code') : '/request-sms-code';
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ phone }) });
+    const txt = await res.text(); let json={}; try{ json = JSON.parse(txt); }catch(_){}
+    if (!res.ok) throw new Error(json.error || 'Failed to send verification code');
+    showNotification('Verification code sent to phone', 'success');
+  } catch(e){ setLoginError(e.message || 'Send failed'); }
+  finally { smsOtpSend.disabled = false; }
+}
+
+async function loginWithSmsCode(){
+  const phone = smsOtpPhone?.value?.trim();
+  const code = smsOtpCode?.value?.trim();
+  if (!phone || !code) return setLoginError('Please enter phone number and verification code');
+  try {
+    const url = (window.POLLY_API?.url) ? window.POLLY_API.url('login-sms-code') : '/login-sms-code';
+    const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ phone, code }) });
+    const txt = await res.text(); let json={}; try{ json = JSON.parse(txt); }catch(_){}
+    if (!res.ok) throw new Error(json.error || 'Verification code sign-in failed');
+    const token = json.token || json.access_token || (json.data && (json.data.token || json.data.access_token)) || '';
+    if (!token) throw new Error('No token returned');
+    try { localStorage.setItem('POLLY_AUTH_TOKEN', token); } catch(_){}
+    setAuthHeaderFromStorage();
+    closeLoginModal();
+    showNotification('Signed in successfully', 'success');
+    if (generateButton) { generateButton.disabled = false; generateButton.textContent = 'Generate'; }
+  } catch(e){ setLoginError(e.message || 'Sign-in failed'); }
+}
+
+function loginWithGoogle(){
+  const base = (window.POLLY_API?.url) ? window.POLLY_API.url('oauth/google/start') : '/oauth/google/start';
+  const redirectUri = window.location.origin + '/';
+  const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
+  window.location.href = url;
+}
+
+function loginWithApple(){
+  const base = (window.POLLY_API?.url) ? window.POLLY_API.url('oauth/apple/start') : '/oauth/apple/start';
+  const redirectUri = window.location.origin + '/';
+  const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
+  window.location.href = url;
+}
+
+function setLoginError(msg){
+  if (loginError) { loginError.textContent = msg; loginError.style.display = 'block'; }
+}
 
 // Ensure Three.js addon modules are available under CSP-safe loading
 async function ensureThreeAddonsLoaded() {
@@ -98,6 +283,32 @@ async function initApp() {
     initThreeJS();
     // Default preview state when no model has been generated
     setPreviewState('default');
+    // Initialize auth from localStorage
+    setAuthHeaderFromStorage();
+    // Capture tokens returned via OAuth redirects in URL
+    captureTokenFromUrl();
+    // Gate generate button until logged in
+    if (generateButton && !isAuthenticated()) {
+      generateButton.disabled = true;
+      generateButton.textContent = 'Login to Generate';
+    }
+}
+
+function captureTokenFromUrl(){
+  try {
+    const u = new URL(window.location.href);
+    const params = new URLSearchParams(u.search);
+    const hashParams = new URLSearchParams(u.hash.replace(/^#/, ''));
+    const token = params.get('token') || params.get('access_token') || hashParams.get('token') || hashParams.get('access_token');
+    if (token) {
+      localStorage.setItem('POLLY_AUTH_TOKEN', token);
+      setAuthHeaderFromStorage();
+      // Clean token from URL
+      params.delete('token'); params.delete('access_token');
+      const newSearch = params.toString();
+      history.replaceState({}, document.title, u.pathname + (newSearch ? ('?' + newSearch) : '') );
+    }
+  } catch(_){}
 }
 
 // File Upload Handlers
@@ -188,7 +399,12 @@ function displayUploadedImage(src) {
     generateButton.style.display = 'inline-block';
     // Update button copy after upload
     resetButton.textContent = 'Delete';
-    generateButton.textContent = 'Generate';
+    generateButton.textContent = isAuthenticated() ? 'Generate' : 'Login to Generate';
+    if (generateButton && !isAuthenticated()) {
+      generateButton.disabled = true;
+    } else {
+      generateButton.disabled = false;
+    }
 }
 
 function resetUpload() {

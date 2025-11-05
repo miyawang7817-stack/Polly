@@ -41,6 +41,9 @@
       const b = normalize(customBase);
       return (b || this.BASE) + p;
     },
+    loginUrl(){
+      return this.url('login');
+    },
     hasFallback(){
       return !!this.FALLBACK_BASE;
     },

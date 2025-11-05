@@ -43,7 +43,7 @@
                 <li><a href="index.html" class="active">Home</a></li>
                 <li><a href="gallery.html">Gallery</a></li>
                 <li><a href="faq.html">FAQ</a></li>
-                <li><a href="#">Login</a></li>
+                <li><a id="login-link" href="#">Login</a></li>
             </ul>
         </nav>
     </header>
@@ -139,6 +139,81 @@
     <div id="loading-overlay" class="loading-overlay" style="display: none;">
         <div class="loading-spinner"></div>
         <p id="loading-text">Processing...</p>
+    </div>
+
+    <!-- Login Modal (two-step like screenshot) -->
+    <div id="login-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+      <div style="background:#141820; color:#fff; border-radius:16px; padding:24px; width:420px; box-shadow:0 12px 32px rgba(0,0,0,0.35);">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:700; font-size:20px;">Polly</span><span style="width:10px; height:10px; background:#FFC65A; border-radius:50%; display:inline-block"></span>
+          </div>
+          <button id="login-close" aria-label="Close" style="border:none; background:transparent; font-size:22px; line-height:1; cursor:pointer; color:#fff">×</button>
+        </div>
+
+        <!-- Step 1: method selection -->
+        <div id="login-step-select" style="margin-top:20px; display:block;">
+          <button id="select-email-or-phone" style="width:100%; padding:14px 16px; border:none; border-radius:999px; background:#fff; color:#111; font-size:16px; display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:14px;">
+            <span>✉️</span>
+            <span>Sign in with Email / Phone</span>
+          </button>
+          <button id="select-apple" style="width:100%; padding:14px 16px; border:none; border-radius:999px; background:#fff; color:#111; font-size:16px; display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:14px;">
+            <span></span>
+            <span>Continue with Apple</span>
+          </button>
+          <button id="select-google" style="width:100%; padding:14px 16px; border:none; border-radius:999px; background:#fff; color:#111; font-size:16px; display:flex; align-items:center; justify-content:center; gap:10px;">
+            <span style="color:#4285F4">G</span>
+            <span>Continue with Google</span>
+          </button>
+          <div style="margin-top:16px; font-size:12px; text-align:center; color:#B8C0CC;">
+            I agree to Polly's <a href="faq.html" style="color:#B8C0CC; text-decoration:underline;">Community Guidelines</a> and <a href="terms.html" style="color:#B8C0CC; text-decoration:underline;">Terms of Service</a> and <a href="privacy.html" style="color:#B8C0CC; text-decoration:underline;">Privacy Policy</a>
+          </div>
+        </div>
+
+        <!-- Step 2: forms -->
+        <div id="login-step-forms" style="margin-top:20px; display:none;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <button id="login-back" style="border:none; background:transparent; color:#fff; cursor:pointer">←</button>
+            <div style="flex:1"></div>
+          </div>
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <button id="tab-sms-otp" class="btn btn-secondary" style="flex:1">Phone</button>
+            <button id="tab-email-otp" class="btn btn-secondary" style="flex:1">Email</button>
+          </div>
+          <!-- SMS OTP Login -->
+          <div id="login-form-sms-otp" style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; gap:8px;">
+              <select id="sms-country" style="flex:0 0 120px; padding:8px 10px; border:1px solid #344055; background:#1b2230; color:#fff; border-radius:999px;">
+                <option value="+886">TW +886</option>
+                <option value="+86">CN +86</option>
+                <option value="+852">HK +852</option>
+                <option value="+81">JP +81</option>
+                <option value="+1">US +1</option>
+              </select>
+              <input id="sms-otp-phone" type="tel" placeholder="Phone number" style="flex:1; padding:8px 16px; border:1px solid #344055; background:#1b2230; color:#fff; border-radius:999px;" />
+            </div>
+            <div style="display:flex; gap:8px;">
+              <input id="sms-otp-code" type="text" placeholder="Verification code" style="flex:1; padding:8px 16px; border:1px solid #344055; background:#1b2230; color:#fff; border-radius:999px;" />
+              <button id="sms-otp-send" class="btn btn-secondary" style="flex:0 0 120px; border-radius:999px;">Send</button>
+            </div>
+            <button id="sms-otp-login" class="btn btn-primary" style="width:100%; border-radius:999px;" disabled>Continue</button>
+          </div>
+          <!-- Email OTP Login -->
+          <div id="login-form-email-otp" style="display:none; flex-direction:column; gap:10px;">
+            <input id="email-otp-email" type="email" placeholder="Email" style="width:100%; padding:8px 16px; border:1px solid #344055; background:#1b2230; color:#fff; border-radius:999px;" />
+            <div style="display:flex; gap:8px;">
+              <input id="email-otp-code" type="text" placeholder="Verification code" style="flex:1; padding:8px 16px; border:1px solid #344055; background:#1b2230; color:#fff; border-radius:999px;" />
+              <button id="email-otp-send" class="btn btn-secondary" style="flex:0 0 120px; border-radius:999px;">Send</button>
+            </div>
+            <button id="email-otp-login" class="btn btn-primary" style="width:100%; border-radius:999px;" disabled>Continue</button>
+          </div>
+          <div style="margin-top:12px; font-size:12px; text-align:center; color:#B8C0CC;">
+            I agree to Polly's <a href="faq.html" style="color:#B8C0CC; text-decoration:underline;">Community Guidelines</a> and <a href="terms.html" style="color:#B8C0CC; text-decoration:underline;">Terms of Service</a> and <a href="privacy.html" style="color:#B8C0CC; text-decoration:underline;">Privacy Policy</a>
+          </div>
+        </div>
+
+        <div id="login-error" style="display:none; margin-top:10px; color:#ff6b6b; font-size:12px;">Sign in failed, please try again.</div>
+      </div>
     </div>
 
     <script src="js/config.js"></script>

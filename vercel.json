@@ -3,6 +3,13 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/generate", "destination": "/api/generate" }
+    { "source": "/generate", "destination": "/api/generate" },
+    { "source": "/login", "destination": "/api/login" },
+    { "source": "/request-email-code", "destination": "/api/request_email_code" },
+    { "source": "/login-email-code", "destination": "/api/login_email_code" },
+    { "source": "/request-sms-code", "destination": "/api/request_sms_code" },
+    { "source": "/login-sms-code", "destination": "/api/login_sms_code" },
+    { "source": "/oauth/google/start", "destination": "/api/oauth_google_start" },
+    { "source": "/oauth/apple/start", "destination": "/api/oauth_apple_start" }
   ]
 }
