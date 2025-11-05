@@ -205,8 +205,11 @@ function generate3DModel() {
         face_count: 80000
     };
     
-    // Send the request to the API (use same-origin path; platform handles proxy)
-    fetch('/generate', {
+    // Build API endpoint from runtime config (default same-origin)
+    const apiUrl = (window.POLLY_API && typeof window.POLLY_API.url === 'function')
+      ? window.POLLY_API.url('generate')
+      : '/generate';
+    fetch(apiUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
