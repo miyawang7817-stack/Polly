@@ -288,11 +288,12 @@ async function initApp() {
     // Capture tokens returned via OAuth redirects in URL
     captureTokenFromUrl();
     // Gate generate button until logged in
-    if (generateButton && !isAuthenticated()) {
-      generateButton.disabled = true;
-      generateButton.textContent = 'Login to Generate';
+    // Temporarily allow generation without login
+    if (generateButton) {
+      generateButton.disabled = false;
+      generateButton.textContent = 'Generate';
     }
-}
+  }
 
 function captureTokenFromUrl(){
   try {
@@ -399,13 +400,10 @@ function displayUploadedImage(src) {
     generateButton.style.display = 'inline-block';
     // Update button copy after upload
     resetButton.textContent = 'Delete';
-    generateButton.textContent = isAuthenticated() ? 'Generate' : 'Login to Generate';
-    if (generateButton && !isAuthenticated()) {
-      generateButton.disabled = true;
-    } else {
-      generateButton.disabled = false;
-    }
-}
+    // Temporarily allow generation without login
+    generateButton.textContent = 'Generate';
+    generateButton.disabled = false;
+  }
 
 function resetUpload() {
     uploadedImageContainer.style.display = 'none';
