@@ -17,3 +17,10 @@
   for = "/js/*"
   [headers.values]
     Cache-Control = "public, max-age=86400"
+
+# Proxy API to backend to avoid browser mixed content & CORS
+[[redirects]]
+  from = "/generate"
+  to = "http://111.229.71.58:8086/generate"
+  status = 200
+  force = true

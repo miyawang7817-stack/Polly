@@ -205,8 +205,8 @@ function generate3DModel() {
         face_count: 80000
     };
     
-    // Send the request to the API
-    fetch('http://111.229.71.58:8086/generate', {
+    // Send the request to the API (use same-origin path; platform handles proxy)
+    fetch('/generate', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
