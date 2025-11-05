@@ -51,8 +51,49 @@ uploadClose && uploadClose.addEventListener('click', resetUpload);
  resetViewBtn && resetViewBtn.addEventListener('click', resetView);
  downloadBtn && downloadBtn.addEventListener('click', downloadModel);
 
+// Ensure Three.js addon modules are available under CSP-safe loading
+async function ensureThreeAddonsLoaded() {
+  // Ensure core THREE is available via ESM without unsafe-eval
+  try {
+    if (!window.THREE) {
+      const core = await import('https://cdn.skypack.dev/three@0.132.2');
+      window.THREE = core;
+    }
+  } catch (_) {}
+  // Load addons from Skypack (rewrites bare imports)
+  try {
+    if (!window.OrbitControls) {
+      const mod = await import('https://cdn.skypack.dev/three@0.132.2/examples/jsm/controls/OrbitControls.js');
+      window.OrbitControls = mod.OrbitControls;
+    }
+  } catch (_) {}
+  try {
+    if (!window.GLTFLoader) {
+      const mod = await import('https://cdn.skypack.dev/three@0.132.2/examples/jsm/loaders/GLTFLoader.js');
+      window.GLTFLoader = mod.GLTFLoader;
+    }
+  } catch (_) {}
+}
+
+async function waitForGlobals(keys, timeoutMs = 10000) {
+  const start = Date.now();
+  while (true) {
+    const ready = keys.every(k => !!window[k]);
+    if (ready) return true;
+    if (Date.now() - start > timeoutMs) return false;
+    await new Promise(r => setTimeout(r, 50));
+  }
+}
+
 // Initialize the application
-function initApp() {
+async function initApp() {
+    // Load Three.js addons first to avoid constructor errors
+    await ensureThreeAddonsLoaded();
+    const ready = await waitForGlobals(['THREE', 'OrbitControls', 'GLTFLoader']);
+    if (!ready) {
+      showNotification('Three.js modules failed to load. Please check CSP and network.', 'error');
+      return;
+    }
     // Initialize Three.js scene
     initThreeJS();
     // Default preview state when no model has been generated
@@ -567,7 +608,10 @@ function initThreeJS() {
     scene.add(rimLight);
     
     // Add controls
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    if (!window.OrbitControls) {
+      throw new Error('OrbitControls not loaded');
+    }
+    controls = new window.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.25;
     controls.enableZoom = true;
@@ -631,7 +675,10 @@ function loadGLBModel(url) {
     updateRendererSize();
     
     // Load the GLB model using GLTFLoader
-    const loader = new THREE.GLTFLoader();
+    if (!window.GLTFLoader) {
+      throw new Error('GLTFLoader not loaded');
+    }
+    const loader = new window.GLTFLoader();
     loader.load(url, 
         // Success callback
         (gltf) => {

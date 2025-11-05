@@ -7,10 +7,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Polly</title>
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Three.js Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Import map to resolve bare specifier 'three' used by JSM modules -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.module.js"
+        }
+      }
+    </script>
+    <!-- Three.js Libraries (CSP-safe ES modules) -->
+    <script type="module">
+      import * as THREE from 'three';
+      import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.132.2/examples/jsm/controls/OrbitControls.js';
+      import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.132.2/examples/jsm/loaders/GLTFLoader.js';
+      // Expose to global for existing non-module code
+      window.THREE = THREE;
+      window.OrbitControls = OrbitControls;
+      window.GLTFLoader = GLTFLoader;
+    </script>
 </head>
   <body>
     <!-- Debug Panel: visible when URL has ?debug=1 -->

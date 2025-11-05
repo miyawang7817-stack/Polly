@@ -8,7 +8,7 @@ const modalDownloadGlbBtn = document.getElementById('modal-download-glb');
 const modalDownloadSnapshotBtn = document.getElementById('modal-download-snapshot');
 
 function isThreeAvailable() {
-  return typeof window.THREE !== 'undefined' && THREE.GLTFLoader && THREE.OrbitControls;
+  return typeof window.THREE !== 'undefined' && !!window.GLTFLoader && !!window.OrbitControls;
 }
 
 // 使用提供的全部灵感 GLB：来自项目根目录
@@ -106,7 +106,7 @@ function generateThumbnailDataURL(glbPath, yaw = 0, pitch = Math.PI / 6, width =
 
   makeLighting(scene);
 
-  const loader = new THREE.GLTFLoader();
+  const loader = new window.GLTFLoader();
   return new Promise((resolve, reject) => {
     loader.load(glbPath, (gltf) => {
       const root = gltf.scene;
