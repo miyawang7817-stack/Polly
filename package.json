@@ -1,0 +1,10 @@
+{
+  "name": "polly-3d-website",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Polly 3D static site with Vercel Node functions",
+  "engines": {
+    "node": ">=18"
+  }
+}

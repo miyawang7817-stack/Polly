@@ -1,7 +1,7 @@
 // Same-origin login API for Vercel (@vercel/node)
 // Proxies login credentials to the real backend and returns JSON (e.g., token).
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // Basic CORS for clarity
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -161,4 +161,4 @@ module.exports = async (req, res) => {
       target: process.env.BACKEND_LOGIN_URL || 'https://111.229.71.58:8086/login'
     }));
   }
-};
+}

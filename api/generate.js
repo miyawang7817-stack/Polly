@@ -1,7 +1,7 @@
 // Same-origin generate API for Vercel (@vercel/node)
 // Proxies the request to the real backend and returns the GLB binary.
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // Basic CORS (not required for same-origin page, but helpful for clarity)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -107,8 +107,9 @@ module.exports = async (req, res) => {
     const isInsecureEnabled = (wantInsecure === '1' || wantInsecure === 'true' || wantInsecure === 'yes');
     if (isInsecureEnabled) {
       try {
-        // Node 18+ global fetch is powered by undici; use Agent to disable verification safely
-        const { Agent } = require('undici');
+        // Node 18+ global fetch is powered by undici; use Agent to disable verification safely (ESM)
+        const mod = await import('undici');
+        const Agent = mod.Agent;
         dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
       } catch (_) {
         // As a last resort, relax global TLS (not recommended). Only set if undici agent fails.
@@ -274,4 +275,4 @@ module.exports = async (req, res) => {
       target: process.env.BACKEND_GENERATE_URL || 'https://111.229.71.58:8086/generate'
     }));
   }
-};
+}
