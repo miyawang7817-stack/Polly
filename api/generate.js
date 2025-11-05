@@ -31,12 +31,23 @@ module.exports = async (req, res) => {
 
     const upstreamUrl = process.env.BACKEND_GENERATE_URL || 'http://111.229.71.58:8086/generate';
 
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'model/gltf-binary,application/octet-stream'
+    };
+    // Forward common auth headers from client to upstream if present
+    const passThrough = ['authorization', 'x-api-key', 'x-auth-token'];
+    passThrough.forEach(h => {
+      if (req.headers[h]) headers[h] = req.headers[h];
+    });
+    // Or inject from environment (configure in platform settings)
+    if (process.env.BACKEND_AUTHORIZATION) headers['Authorization'] = process.env.BACKEND_AUTHORIZATION;
+    if (process.env.BACKEND_X_API_KEY) headers['x-api-key'] = process.env.BACKEND_X_API_KEY;
+    if (process.env.BACKEND_X_AUTH_TOKEN) headers['x-auth-token'] = process.env.BACKEND_X_AUTH_TOKEN;
+
     const upstreamResp = await fetch(upstreamUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'model/gltf-binary,application/octet-stream'
-      },
+      headers,
       body: bodyStr || '{}'
     });
 

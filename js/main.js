@@ -244,7 +244,7 @@ function generate3DModel() {
     
     // Prepare the request data
     const requestData = {
-        image: base64Data,
+        image_base64: base64Data,
         face_count: 80000
     };
     
