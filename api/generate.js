@@ -94,7 +94,8 @@ module.exports = async (req, res) => {
     const defaultTimeoutMs = (() => {
       const envVal = process.env.UPSTREAM_TIMEOUT_MS;
       const n = envVal ? parseInt(envVal, 10) : NaN;
-      return Number.isFinite(n) && n > 0 ? n : 120000; // 120s default
+      // Default to 300s (5 minutes) to accommodate long-running generation
+      return Number.isFinite(n) && n > 0 ? n : 300000;
     })();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), defaultTimeoutMs);
