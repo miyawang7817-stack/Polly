@@ -198,13 +198,25 @@ function generate3DModel() {
     // Move preview area to loading state
     setPreviewState('loading');
     
-    // Convert & compress image to base64 if not already done
-    if (!imageData) {
-        previewLoadingText && (previewLoadingText.textContent = 'Compressing image...');
-        const baseIsSameOrigin = (window.POLLY_API && window.POLLY_API.BASE === '/');
-        const maxDim = baseIsSameOrigin ? 1024 : 1280; // reduce payload for same-origin proxy
-        const quality = baseIsSameOrigin ? 0.75 : 0.85;
-        imageData = compressImageToDataURL(uploadedImage, maxDim, quality);
+    // Always compress image to control payload size (avoid Vercel 413)
+    previewLoadingText && (previewLoadingText.textContent = 'Compressing image...');
+    const baseIsSameOrigin = (window.POLLY_API && window.POLLY_API.BASE === '/');
+    // For same-origin proxy (Vercel function), use tighter compression
+    let maxDim = baseIsSameOrigin ? 900 : 1280;
+    let quality = baseIsSameOrigin ? 0.7 : 0.85;
+    let compressedDataUrl = compressImageToDataURL(uploadedImage, maxDim, quality, true);
+    // If still large, step down progressively
+    const sizeLimitChars = 1800000; // ~1.8MB in base64 characters to stay well under limits
+    let base64Len = (compressedDataUrl || '').length;
+    if (base64Len > sizeLimitChars) {
+      maxDim = 720; quality = 0.62;
+      compressedDataUrl = compressImageToDataURL(uploadedImage, maxDim, quality, true);
+      base64Len = compressedDataUrl.length;
+    }
+    if (base64Len > sizeLimitChars) {
+      maxDim = 640; quality = 0.55;
+      compressedDataUrl = compressImageToDataURL(uploadedImage, maxDim, quality, true);
+      base64Len = compressedDataUrl.length;
     }
 
     // Mock mode: skip network, load a local sample GLB to verify frontend
@@ -242,18 +254,16 @@ function generate3DModel() {
         }
     }
     
-    // Extract base64 data from the Data URL
-    const base64Data = imageData.split(',')[1];
+    // Extract base64 data from the compressed Data URL
+    const base64Data = compressedDataUrl.split(',')[1];
     
     // Prepare the request data (兼容不同后端约定)
     const faceParams = new URLSearchParams(window.location.search);
     const facesOverrideStr = faceParams.get('faceCount') || faceParams.get('faces');
     const faceCountOverride = facesOverrideStr ? Math.max(10000, parseInt(facesOverrideStr, 10) || 0) : null;
     const requestData = {
-        // 兼容你的后端：image 字段使用纯 base64 字符串
-        image: base64Data,
-        // 同时保留 image_base64 以兼容其它后端（可选）
-        image_base64: base64Data
+        // 后端约定：image 字段使用纯 base64 字符串
+        image: base64Data
     };
     if (faceCountOverride && isFinite(faceCountOverride)) {
         requestData.face_count = faceCountOverride;
@@ -603,7 +613,7 @@ function updateRendererSize() {
     camera.updateProjectionMatrix();
 }
 // Helper: compress image with max dimension and quality, return dataURL
-function compressImageToDataURL(imgEl, maxDim = 1280, quality = 0.85) {
+function compressImageToDataURL(imgEl, maxDim = 1280, quality = 0.85, preferWebp = false) {
     const nw = imgEl.naturalWidth || imgEl.width;
     const nh = imgEl.naturalHeight || imgEl.height;
     let tw = nw, th = nh;
@@ -622,6 +632,15 @@ function compressImageToDataURL(imgEl, maxDim = 1280, quality = 0.85) {
     canvas.height = Math.max(1, Math.round(th));
     const ctx = canvas.getContext('2d');
     ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+    // Prefer WebP for better compression if supported, fall back to JPEG
+    try {
+      if (preferWebp) {
+        const webp = canvas.toDataURL('image/webp', quality);
+        if (typeof webp === 'string' && webp.startsWith('data:image/webp')) {
+          return webp;
+        }
+      }
+    } catch(_) {}
     return canvas.toDataURL('image/jpeg', quality);
 }
 
