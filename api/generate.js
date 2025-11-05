@@ -5,7 +5,21 @@ module.exports = async (req, res) => {
   // Basic CORS (not required for same-origin page, but helpful for clarity)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+  // Allow common auth and Vercel bypass headers for cross-origin testing/debugging
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    [
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'X-API-KEY',
+      'X-AUTH-TOKEN',
+      'x-api-key',
+      'x-auth-token',
+      'x-vercel-protection-bypass',
+      'x-vercel-set-bypass-cookie'
+    ].join(', ')
+  );
 
   if (req.method === 'OPTIONS') {
     res.statusCode = 200;
@@ -58,9 +72,18 @@ module.exports = async (req, res) => {
       try {
         upstreamResp.headers.forEach((v, k) => headerDump.push(`${k}: ${v}`));
       } catch (_) {}
-      const composed = `Upstream ${upstreamResp.status} ${upstreamResp.statusText}\n${headerDump.join('\n')}\n\n${txt}`.trim();
+      const bodyInfo = `request_body_length=${(bodyStr || '').length}`;
+      const composed = [
+        `Upstream ${upstreamResp.status} ${upstreamResp.statusText} at <${upstreamUrl}>`,
+        bodyInfo,
+        headerDump.join('\n'),
+        '',
+        txt
+      ].join('\n').trim();
       res.statusCode = upstreamResp.status;
       res.setHeader('Content-Type', 'text/plain');
+      // Surface target url for client-side logs
+      res.setHeader('X-Proxy-Target', upstreamUrl);
       res.end(composed);
       return;
     }
@@ -77,6 +100,11 @@ module.exports = async (req, res) => {
     console.error('api/generate proxy error:', err);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: 'Internal Server Error', message: String(err && err.message || err) }));
+    res.end(JSON.stringify({
+      error: 'Internal Server Error',
+      message: String((err && err.message) || err),
+      hint: 'Check BACKEND_GENERATE_URL env and upstream availability.',
+      target: process.env.BACKEND_GENERATE_URL || 'http://111.229.71.58:8086/generate'
+    }));
   }
 };
