@@ -2,7 +2,5 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
-  "rewrites": [
-    { "source": "/generate", "destination": "http://111.229.71.58:8086/generate" }
-  ]
+  "rewrites": []
 }
