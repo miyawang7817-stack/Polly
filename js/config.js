@@ -12,11 +12,15 @@
   // Allow overriding via URL ?apiBase=... or <meta name="polly-api-base" content="...">
   const search = new URLSearchParams(window.location.search);
   const searchBase = search.get('apiBase');
+  const searchFallbackBase = search.get('fallbackApiBase');
   const metaEl = document.querySelector('meta[name="polly-api-base"]');
   const metaBase = metaEl && metaEl.getAttribute('content');
   const chosenBase = window.POLLY_API_BASE || searchBase || metaBase || DEFAULT_BASE;
   const base = normalize(chosenBase);
-  const fallbackBase = normalize(window.POLLY_API_FALLBACK_BASE || '');
+  const metaFallbackEl = document.querySelector('meta[name="polly-fallback-api-base"]');
+  const metaFallbackBase = metaFallbackEl && metaFallbackEl.getAttribute('content');
+  const chosenFallbackBase = window.POLLY_API_FALLBACK_BASE || searchFallbackBase || metaFallbackBase || '';
+  const fallbackBase = normalize(chosenFallbackBase);
   window.POLLY_API = {
     BASE: base,
     FALLBACK_BASE: fallbackBase || null,

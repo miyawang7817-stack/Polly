@@ -82,7 +82,7 @@ function handleDrop(e) {
         if (isValidImageFile(file)) {
             processImageFile(file);
         } else {
-            showNotification('Please upload a valid image file (JPEG, PNG, or WebP).', 'error');
+            showNotification('Please upload a valid image file.', 'error');
         }
     }
 }
@@ -99,8 +99,11 @@ function handleFileSelect(e) {
 }
 
 function isValidImageFile(file) {
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    return validTypes.includes(file.type);
+    // 放宽类型校验：接受所有 image/*；若缺少 MIME，则按扩展名兜底
+    if (!file) return false;
+    if (file.type && file.type.startsWith('image/')) return true;
+    const name = (file.name || '').toLowerCase();
+    return /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(name);
 }
 
 function processImageFile(file) {
@@ -243,16 +246,18 @@ function generate3DModel() {
     const base64Data = imageData.split(',')[1];
     
     // Prepare the request data (兼容不同后端约定)
-    const searchParams = new URLSearchParams(window.location.search);
-    const facesOverrideStr = searchParams.get('faceCount') || searchParams.get('faces');
-    const faceCount = facesOverrideStr ? Math.max(10000, parseInt(facesOverrideStr, 10) || 80000) : 80000;
+    const faceParams = new URLSearchParams(window.location.search);
+    const facesOverrideStr = faceParams.get('faceCount') || faceParams.get('faces');
+    const faceCountOverride = facesOverrideStr ? Math.max(10000, parseInt(facesOverrideStr, 10) || 0) : null;
     const requestData = {
-        // 一些后端要求字段名为 image_base64（仅 base64 字符串，无前缀）
-        image_base64: base64Data,
-        // 另一些后端可能直接消费完整 DataURL（带 mime 前缀），这里一并提供
-        image: imageData,
-        face_count: faceCount
+        // 兼容你的后端：image 字段使用纯 base64 字符串
+        image: base64Data,
+        // 同时保留 image_base64 以兼容其它后端（可选）
+        image_base64: base64Data
     };
+    if (faceCountOverride && isFinite(faceCountOverride)) {
+        requestData.face_count = faceCountOverride;
+    }
     
     // Build API endpoints from runtime config (default same-origin)
     const primaryUrl = (window.POLLY_API && typeof window.POLLY_API.url === 'function')
@@ -261,6 +266,16 @@ function generate3DModel() {
     const fallbackUrl = (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function' && window.POLLY_API.hasFallback && window.POLLY_API.hasFallback())
       ? window.POLLY_API.urlFrom(window.POLLY_API.FALLBACK_BASE, 'generate')
       : null;
+
+    // 若目标是你提供的 IP 后端且未显式传 faces，则默认附带 face_count=80000
+    try {
+      if (!requestData.face_count && primaryUrl) {
+        const purl = new URL(primaryUrl, window.location.origin);
+        if ((purl.host || '').includes('111.229.71.58:8086')) {
+          requestData.face_count = 80000;
+        }
+      }
+    } catch(_) {}
 
     // Timeout control (configurable via URL ?timeout or global window.POLLY_TIMEOUT_MS)
     const controller = new AbortController();
