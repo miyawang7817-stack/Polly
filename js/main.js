@@ -278,6 +278,14 @@ function generate3DModel() {
         mode: 'cors'
     };
 
+    // If calling same-origin placeholder (/generate -> /api/generate),
+    // avoid sending large image payload to prevent 413 (FUNCTION_PAYLOAD_TOO_LARGE).
+    // This stub endpoint returns a bundled GLB regardless of body.
+    const isSameOriginGenerate = (typeof primaryUrl === 'string' && primaryUrl === '/generate');
+    if (isSameOriginGenerate) {
+        fetchOpts.body = JSON.stringify({ placeholder: true });
+    }
+
     // Try primary; on failure or timeout, try fallback once (if provided)
     makeRequestWithFallback(primaryUrl, fallbackUrl, fetchOpts)
       .then(blob => {
