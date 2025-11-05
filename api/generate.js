@@ -54,9 +54,14 @@ module.exports = async (req, res) => {
     // Forward non-OK as text for easier debugging on the client
     if (!upstreamResp.ok) {
       const txt = await upstreamResp.text().catch(() => '');
+      const headerDump = [];
+      try {
+        upstreamResp.headers.forEach((v, k) => headerDump.push(`${k}: ${v}`));
+      } catch (_) {}
+      const composed = `Upstream ${upstreamResp.status} ${upstreamResp.statusText}\n${headerDump.join('\n')}\n\n${txt}`.trim();
       res.statusCode = upstreamResp.status;
       res.setHeader('Content-Type', 'text/plain');
-      res.end(txt || `Upstream error ${upstreamResp.status}`);
+      res.end(composed);
       return;
     }
 

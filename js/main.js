@@ -242,10 +242,16 @@ function generate3DModel() {
     // Extract base64 data from the Data URL
     const base64Data = imageData.split(',')[1];
     
-    // Prepare the request data
+    // Prepare the request data (兼容不同后端约定)
+    const searchParams = new URLSearchParams(window.location.search);
+    const facesOverrideStr = searchParams.get('faceCount') || searchParams.get('faces');
+    const faceCount = facesOverrideStr ? Math.max(10000, parseInt(facesOverrideStr, 10) || 80000) : 80000;
     const requestData = {
+        // 一些后端要求字段名为 image_base64（仅 base64 字符串，无前缀）
         image_base64: base64Data,
-        face_count: 80000
+        // 另一些后端可能直接消费完整 DataURL（带 mime 前缀），这里一并提供
+        image: imageData,
+        face_count: faceCount
     };
     
     // Build API endpoints from runtime config (default same-origin)

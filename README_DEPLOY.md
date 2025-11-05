@@ -65,7 +65,7 @@ server {
   - 建议设置 `Content-Length` 和禁止缓存（或控制缓存）：`Cache-Control: no-store`
 
 - 时长与可靠性：
-  - 前端默认超时 60s，可在 `js/main.js` 中调整 `timeoutMs`
+  - 前端默认超时 5 分钟（可通过 URL `?timeout` 或全局 `window.POLLY_TIMEOUT_MS` 调整）
   - 建议后端使用异步任务 + 轮询接口，避免前端长时间连接超时
 
 - 备用端点：
@@ -73,3 +73,49 @@ server {
   - 前端会在主请求失败后自动尝试一次备用端点
 
 > 注意：如果 Vercel 项目开启了 Deployment Protection，请关闭生产环境的保护，或改为直连不受保护的后端域名。临时测试可使用 Vercel 的保护绕过密钥，但不建议在公开生产环境中使用。
+
+## 使用同源代理连接后端（无需后端 HTTPS）
+
+当你的后端仅支持 HTTP，且页面在 HTTPS 环境（如 Vercel）下需要“按上传图生成”，可以使用同源服务端代理：前端请求 `https://<your.vercel.app>/api/generate`，由该函数代理到你的后端。
+
+### 配置步骤（Vercel Dashboard）
+1. 登录 Vercel → 选择你的项目（例如 Polly）。
+2. 打开项目 → Settings → Environment Variables。
+3. 添加以下环境变量（Environment 推荐同时设置为 Production 与 Preview）：
+   - `BACKEND_GENERATE_URL`：你的后端生成地址（例如 `http://111.229.71.58:8086/generate` 或 `https://api.yourdomain.com/generate`）。
+   - 可选 `BACKEND_AUTHORIZATION`：后端需要的 Authorization 值（例如 `Bearer xxxxx`）。
+   - 可选 `BACKEND_X_API_KEY`：如果后端使用 `x-api-key`。
+   - 可选 `BACKEND_X_AUTH_TOKEN`：如果后端使用自定义 token 头。
+4. 保存后重新部署（或触发一次 Redeploy），新部署将自动使用这些变量。
+
+### CLI 方式（可选）
+在项目根执行：
+
+```
+vercel env add BACKEND_GENERATE_URL production
+vercel env add BACKEND_AUTHORIZATION production
+vercel env add BACKEND_X_API_KEY production
+vercel env add BACKEND_X_AUTH_TOKEN production
+```
+
+根据提示输入对应值；如需为 preview/staging 环境设置，命令中的环境改为 `preview`。
+
+### 前端与代理行为说明
+- 前端会向同源 `POST /api/generate` 发送真实图片与 `face_count`（字段名：`image_base64`）。
+- 该同源函数会：
+  - 读取上述环境变量，构造对你的后端的请求；
+  - 自动转发浏览器请求中携带的常用鉴权头（`Authorization`、`x-api-key`、`x-auth-token`）；
+  - 返回后端的 GLB 二进制，并设置 `Content-Type: model/gltf-binary`。
+
+### 额外调试选项（临时）
+- 你也可以通过前端 URL 参数临时传入鉴权：
+  - `?authBearer=YOUR_TOKEN` → 请求头 `Authorization: Bearer YOUR_TOKEN`
+  - `?apiKey=YOUR_API_KEY` → 请求头 `x-api-key: YOUR_API_KEY`
+- 推荐在生产环境使用 Vercel 的环境变量，避免在 URL 暴露凭证。
+
+### 验证
+- 访问 `https://<your.vercel.app>/#converter` 上传图片生成。
+- 在浏览器 Network 面板观察：
+  - `Request URL`：`/api/generate`
+  - `Request Payload`：`{"image_base64":"...","face_count":80000}`
+  - 响应：`200 OK` 且 `Content-Type: model/gltf-binary`，页面展示 GLB。
