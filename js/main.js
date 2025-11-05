@@ -186,14 +186,10 @@ function generate3DModel() {
     // Move preview area to loading state
     setPreviewState('loading');
     
-    // Convert image to base64 if not already done
+    // Convert & compress image to base64 if not already done
     if (!imageData) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = uploadedImage.naturalWidth;
-        canvas.height = uploadedImage.naturalHeight;
-        ctx.drawImage(uploadedImage, 0, 0);
-        imageData = canvas.toDataURL('image/jpeg');
+        previewLoadingText && (previewLoadingText.textContent = 'Compressing image...');
+        imageData = compressImageToDataURL(uploadedImage, 1280, 0.85);
     }
     
     // Extract base64 data from the Data URL
@@ -205,46 +201,55 @@ function generate3DModel() {
         face_count: 80000
     };
     
-    // Build API endpoint from runtime config (default same-origin)
-    const apiUrl = (window.POLLY_API && typeof window.POLLY_API.url === 'function')
+    // Build API endpoints from runtime config (default same-origin)
+    const primaryUrl = (window.POLLY_API && typeof window.POLLY_API.url === 'function')
       ? window.POLLY_API.url('generate')
       : '/generate';
-    fetch(apiUrl, {
+    const fallbackUrl = (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function' && window.POLLY_API.hasFallback && window.POLLY_API.hasFallback())
+      ? window.POLLY_API.urlFrom(window.POLLY_API.FALLBACK_BASE, 'generate')
+      : null;
+
+    // Timeout control
+    const controller = new AbortController();
+    const timeoutMs = 60000; // 60s to better tolerate generation
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    previewEstimateEl && (previewEstimateEl.textContent = '≈ 20–60s');
+    previewLoadingText && (previewLoadingText.textContent = 'Generating...');
+
+    // Common fetch options
+    const fetchOpts = {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'model/gltf-binary,application/octet-stream'
         },
-        body: JSON.stringify(requestData)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.blob();
-    })
-    .then(blob => {
-        // Create a URL for the blob
+        body: JSON.stringify(requestData),
+        signal: controller.signal,
+        cache: 'no-store',
+        credentials: 'omit',
+        mode: 'cors'
+    };
+
+    // Try primary; on failure or timeout, try fallback once (if provided)
+    makeRequestWithFallback(primaryUrl, fallbackUrl, fetchOpts)
+      .then(blob => {
+        clearTimeout(timeoutId);
         const modelUrl = URL.createObjectURL(blob);
         window.modelUrl = modelUrl;
-
-        // Load the GLB model
         loadGLBModel(modelUrl);
-
-        // Reset button state
         generateButton.disabled = false;
         generateButton.textContent = 'Generate';
-        
-        // Show success notification
         showNotification('Model generated successfully!', 'success');
-    })
-    .catch(error => {
-        console.error('Error generating 3D model:', error);
-        // Back to default state on failure
+      })
+      .catch(err => {
+        clearTimeout(timeoutId);
+        console.error('Error generating 3D model:', err);
         setPreviewState('default');
         generateButton.disabled = false;
         generateButton.textContent = 'Generate';
-        showNotification('Failed to generate 3D model. Please try again.', 'error');
-    });
+        const msg = (err && err.message) ? err.message : 'Failed to generate 3D model.';
+        showNotification(msg + ' Please try again.', 'error');
+      });
 }
 
 // Three.js Functions
@@ -504,4 +509,48 @@ function updateRendererSize() {
     const aspect = targetW / targetH;
     camera.aspect = aspect;
     camera.updateProjectionMatrix();
+}
+// Helper: compress image with max dimension and quality, return dataURL
+function compressImageToDataURL(imgEl, maxDim = 1280, quality = 0.85) {
+    const nw = imgEl.naturalWidth || imgEl.width;
+    const nh = imgEl.naturalHeight || imgEl.height;
+    let tw = nw, th = nh;
+    if (nw > nh && nw > maxDim) {
+        const scale = maxDim / nw;
+        tw = Math.round(nw * scale);
+        th = Math.round(nh * scale);
+    } else if (nh >= nw && nh > maxDim) {
+        const scale = maxDim / nh;
+        tw = Math.round(nh * scale) * (nw / nh);
+        th = Math.round(nh * scale);
+        tw = Math.round(tw);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(tw));
+    canvas.height = Math.max(1, Math.round(th));
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', quality);
+}
+
+// Helper: request with one fallback attempt
+async function makeRequestWithFallback(primaryUrl, fallbackUrl, opts) {
+    const tryFetch = async (url) => {
+        const res = await fetch(url, opts);
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ' - ' + text : ''}`);
+        }
+        return res.blob();
+    };
+    try {
+        return await tryFetch(primaryUrl);
+    } catch (e) {
+        // If aborted or timeout or non-2xx, try fallback once
+        if (fallbackUrl) {
+            console.warn('Primary request failed, trying fallback:', e.message);
+            return await tryFetch(fallbackUrl);
+        }
+        throw e;
+    }
 }
