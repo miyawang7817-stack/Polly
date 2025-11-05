@@ -28,4 +28,20 @@
       return !!this.FALLBACK_BASE;
     }
   };
+  // Optional: Vercel Deployment Protection bypass (for testing/automation only)
+  // Set via inline script: window.POLLY_PROTECTION_BYPASS_SECRET = '...';
+  window.POLLY_AUTH = {
+    PROTECTION_BYPASS_SECRET: window.POLLY_PROTECTION_BYPASS_SECRET || '',
+    SET_BYPASS_COOKIE: true,
+    buildBypassHeaders(){
+      const h = {};
+      if (this.PROTECTION_BYPASS_SECRET) {
+        h['x-vercel-protection-bypass'] = this.PROTECTION_BYPASS_SECRET;
+        if (this.SET_BYPASS_COOKIE) {
+          h['x-vercel-set-bypass-cookie'] = 'true';
+        }
+      }
+      return h;
+    }
+  };
 })();

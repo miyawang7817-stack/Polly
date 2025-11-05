@@ -217,12 +217,16 @@ function generate3DModel() {
     previewLoadingText && (previewLoadingText.textContent = 'Generating...');
 
     // Common fetch options
+    const baseHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'model/gltf-binary,application/octet-stream'
+    };
+    const bypassHeaders = (window.POLLY_AUTH && typeof window.POLLY_AUTH.buildBypassHeaders === 'function')
+      ? window.POLLY_AUTH.buildBypassHeaders()
+      : {};
     const fetchOpts = {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'model/gltf-binary,application/octet-stream'
-        },
+        headers: Object.assign({}, baseHeaders, bypassHeaders),
         body: JSON.stringify(requestData),
         signal: controller.signal,
         cache: 'no-store',
