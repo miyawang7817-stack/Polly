@@ -39,6 +39,7 @@
   window.POLLY_AUTH = {
     PROTECTION_BYPASS_SECRET: window.POLLY_PROTECTION_BYPASS_SECRET || '',
     SET_BYPASS_COOKIE: true,
+    CUSTOM_HEADERS: {},
     buildBypassHeaders(){
       const h = {};
       if (this.PROTECTION_BYPASS_SECRET) {
@@ -46,6 +47,24 @@
         if (this.SET_BYPASS_COOKIE) {
           h['x-vercel-set-bypass-cookie'] = 'true';
         }
+      }
+      return h;
+    },
+    buildExtraHeaders(){
+      const h = {};
+      // Merge bypass headers
+      Object.assign(h, this.buildBypassHeaders());
+      // Allow simple runtime header injection via URL params
+      try {
+        const qs = new URLSearchParams(window.location.search);
+        const apiKey = qs.get('apiKey');
+        const authBearer = qs.get('authBearer');
+        if (apiKey) h['x-api-key'] = apiKey;
+        if (authBearer) h['Authorization'] = 'Bearer ' + authBearer;
+      } catch(_) {}
+      // Also merge any pre-set custom headers
+      if (this.CUSTOM_HEADERS && typeof this.CUSTOM_HEADERS === 'object') {
+        Object.assign(h, this.CUSTOM_HEADERS);
       }
       return h;
     }

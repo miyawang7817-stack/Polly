@@ -284,12 +284,12 @@ function generate3DModel() {
         'Content-Type': 'application/json',
         'Accept': 'model/gltf-binary,application/octet-stream'
     };
-    const bypassHeaders = (window.POLLY_AUTH && typeof window.POLLY_AUTH.buildBypassHeaders === 'function')
-      ? window.POLLY_AUTH.buildBypassHeaders()
-      : {};
+    const extraHeaders = (window.POLLY_AUTH && typeof window.POLLY_AUTH.buildExtraHeaders === 'function')
+      ? window.POLLY_AUTH.buildExtraHeaders()
+      : ((window.POLLY_AUTH && typeof window.POLLY_AUTH.buildBypassHeaders === 'function') ? window.POLLY_AUTH.buildBypassHeaders() : {});
     const fetchOpts = {
         method: 'POST',
-        headers: Object.assign({}, baseHeaders, bypassHeaders),
+        headers: Object.assign({}, baseHeaders, extraHeaders),
         body: JSON.stringify(requestData),
         signal: controller.signal,
         cache: 'no-store',
