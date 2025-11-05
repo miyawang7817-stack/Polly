@@ -144,10 +144,20 @@ module.exports = async (req, res) => {
         const statusCode = isAbort ? 504 : 502;
         const reasonText = isAbort ? `Upstream timeout after ${defaultTimeoutMs}ms` : `Upstream fetch error: ${String(fetchErr && fetchErr.message || fetchErr)}`;
         const bodyInfo = `request_body_length=${(bodyStr || '').length}`;
+        const nameInfo = `error_name=${String((fetchErr && fetchErr.name) || '')}`;
+        const codeInfo = `error_code=${String((fetchErr && fetchErr.code) || '')}`;
+        let stackInfo = '';
+        try {
+          const st = String((fetchErr && fetchErr.stack) || '').split('\n').slice(0, 6).join('\n');
+          if (st) stackInfo = `stack=\n${st}`;
+        } catch (_) {}
         const composed = [
           `${reasonText} at <${upstreamUrl}>`,
-          bodyInfo
-        ].join('\n').trim();
+          bodyInfo,
+          nameInfo,
+          codeInfo,
+          stackInfo
+        ].filter(Boolean).join('\n').trim();
         res.statusCode = statusCode;
         res.setHeader('Content-Type', 'text/plain');
         res.setHeader('X-Proxy-Target', upstreamUrl);
