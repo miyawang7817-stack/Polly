@@ -12,7 +12,13 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
 </head>
-<body>
+  <body>
+    <!-- Debug Panel: visible when URL has ?debug=1 -->
+    <div id="debug-panel" style="display:none; font-family: ui-monospace, Menlo, Monaco, Consolas, 'Courier New', monospace; font-size:12px; background:#fafafa; border:1px solid #eaeaea; border-radius:8px; padding:12px; margin:12px; white-space:pre-wrap;">
+      <div style="font-weight:600; margin-bottom:8px;">Request Debug</div>
+      <div id="debug-content">No requests yet.</div>
+      <div style="margin-top:8px; color:#666;">Tip: add <code>?debug=1</code> to the URL to keep this panel visible.</div>
+    </div>
     <header>
         <nav>
             <a class="logo" href="index.html" aria-label="Polly home">

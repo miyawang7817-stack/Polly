@@ -23,6 +23,9 @@ const loadingText = document.getElementById('loading-text');
 const previewLoading = document.getElementById('preview-loading');
 const previewLoadingText = document.getElementById('preview-loading-text');
 const previewEstimateEl = document.getElementById('preview-estimate-seconds');
+const debugPanel = document.getElementById('debug-panel');
+const debugContent = document.getElementById('debug-content');
+const isDebug = (new URLSearchParams(window.location.search).get('debug') === '1');
 
 // Three.js variables
 let scene, camera, renderer, controls, model, wireframeMaterial;
@@ -244,6 +247,7 @@ function generate3DModel() {
         generateButton.disabled = false;
         generateButton.textContent = 'Generate';
         showNotification('Model generated successfully!', 'success');
+        updateDebugPanel();
       })
       .catch(err => {
         clearTimeout(timeoutId);
@@ -253,6 +257,7 @@ function generate3DModel() {
         generateButton.textContent = 'Generate';
         const msg = (err && err.message) ? err.message : 'Failed to generate 3D model.';
         showNotification(msg + ' Please try again.', 'error');
+        updateDebugPanel(err);
       });
 }
 
@@ -540,12 +545,25 @@ function compressImageToDataURL(imgEl, maxDim = 1280, quality = 0.85) {
 // Helper: request with one fallback attempt
 async function makeRequestWithFallback(primaryUrl, fallbackUrl, opts) {
     const tryFetch = async (url) => {
+        const start = Date.now();
         const res = await fetch(url, opts);
+        const duration = Date.now() - start;
+        const attempt = {
+            url,
+            status: res.status,
+            statusText: res.statusText,
+            durationMs: duration
+        };
+        window.POLLY_DEBUG_LAST = window.POLLY_DEBUG_LAST || { attempts: [] };
+        window.POLLY_DEBUG_LAST.attempts.push(attempt);
         if (!res.ok) {
             const text = await res.text().catch(() => '');
+            attempt.responseTextSample = text ? text.slice(0, 2000) : '';
             throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ' - ' + text : ''}`);
         }
-        return res.blob();
+        const blob = await res.blob();
+        attempt.blobSize = blob.size || null;
+        return blob;
     };
     try {
         return await tryFetch(primaryUrl);
@@ -557,4 +575,33 @@ async function makeRequestWithFallback(primaryUrl, fallbackUrl, opts) {
         }
         throw e;
     }
+}
+
+function updateDebugPanel(err) {
+    if (!debugPanel || !debugContent) return;
+    if (!isDebug) {
+        // Only show when ?debug=1 is present
+        return;
+    }
+    debugPanel.style.display = 'block';
+    const last = window.POLLY_DEBUG_LAST;
+    if (!last || !last.attempts || last.attempts.length === 0) {
+        debugContent.textContent = 'No request attempts captured.';
+        return;
+    }
+    const lines = [];
+    lines.push(`[${new Date().toLocaleString()}] Attempts:`);
+    last.attempts.forEach((a, i) => {
+        lines.push(`#${i+1}`);
+        lines.push(`URL: ${a.url}`);
+        lines.push(`Status: ${a.status} ${a.statusText}`);
+        if (typeof a.blobSize === 'number') lines.push(`Blob size: ${a.blobSize} bytes`);
+        if (a.responseTextSample) lines.push(`Response text sample:\n${a.responseTextSample}`);
+        lines.push(`Duration: ${a.durationMs} ms`);
+        lines.push('');
+    });
+    if (err && err.message) {
+        lines.push(`Error: ${err.message}`);
+    }
+    debugContent.textContent = lines.join('\n');
 }
