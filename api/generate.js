@@ -251,7 +251,7 @@ module.exports = async (req, res) => {
       error: 'Internal Server Error',
       message: String((err && err.message) || err),
       hint: 'Check BACKEND_GENERATE_URL env and upstream availability.',
-      target: process.env.BACKEND_GENERATE_URL || 'http://111.229.71.58:8086/generate'
+      target: process.env.BACKEND_GENERATE_URL || 'https://111.229.71.58:8086/generate'
     }));
   }
 };

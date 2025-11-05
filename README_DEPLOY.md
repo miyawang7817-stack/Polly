@@ -82,7 +82,7 @@ server {
 1. 登录 Vercel → 选择你的项目（例如 Polly）。
 2. 打开项目 → Settings → Environment Variables。
 3. 添加以下环境变量（Environment 推荐同时设置为 Production 与 Preview）：
-   - `BACKEND_GENERATE_URL`：你的后端生成地址（例如 `http://111.229.71.58:8086/generate` 或 `https://api.yourdomain.com/generate`）。
+   - `BACKEND_GENERATE_URL`：你的后端生成地址（例如 `https://111.229.71.58:8086/generate` 或 `https://api.yourdomain.com/generate`）。
    - 可选 `BACKEND_AUTHORIZATION`：后端需要的 Authorization 值（例如 `Bearer xxxxx`）。
    - 可选 `BACKEND_X_API_KEY`：如果后端使用 `x-api-key`。
    - 可选 `BACKEND_X_AUTH_TOKEN`：如果后端使用自定义 token 头。
