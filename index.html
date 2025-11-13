@@ -4,9 +4,17 @@
     <meta charset="UTF-8">
     <!-- Optional: set direct HTTPS backend via meta tag (can also use URL ?apiBase=...) -->
     <meta name="polly-api-base" content="">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polly</title>
-    <link rel="stylesheet" href="css/styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polly</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/login.css">
+    <!-- Optional: Figma tokens configuration (uncomment to use) -->
+    <!--
+      <script>
+        // Point to your hosted tokens JSON exported from Figma
+        // window.FIGMA_TOKENS_URL = 'https://your.cdn/path/to/tokens.json';
+      </script>
+    -->
     <!-- Import map to resolve bare specifier 'three' used by JSM modules -->
     <script type="importmap">
       {
@@ -25,6 +33,8 @@
       window.OrbitControls = OrbitControls;
       window.GLTFLoader = GLTFLoader;
     </script>
+    <!-- Design tokens loader: applies Figma-exported tokens to CSS variables -->
+    <script src="js/figma_tokens.js"></script>
 </head>
   <body>
     <!-- Debug Panel: visible when URL has ?debug=1 -->
@@ -51,7 +61,7 @@
     <section class="hero">
         <div class="container">
             <div class="hero-content">
-                <h1>Upload! Transform into 3D!</h1>
+                <h1>Upload!<br/>Transform into 3D!</h1>
                 <p>Turn any image or text into premium 3D models instantly.</p>
                 <a href="#converter" class="btn btn-primary btn-large cta-breathe">Try It Free</a>
             </div>
@@ -60,31 +70,88 @@
 
     <section id="converter" class="converter-section">
         <div class="container">
-            <h2>Image to 3D Converter</h2>
+            <div class="converter-banner" aria-label="Image to 3D Converter banner">
+              <!-- 请将你的 PNG 拷贝到 assets/images/ 并命名为 converter-title.png -->
+              <img src="assets/images/converter-title.png" alt="Converter Title Banner" />
+            </div>
             <div class="converter-container">
                 <div class="upload-area">
                     <h3>Upload Image</h3>
-                    <div id="upload-box" class="upload-box">
-                        <div id="upload-placeholder" class="upload-placeholder">
-                            <img src="assets/images/upload-icon.svg" alt="Upload Icon">
-                            <p>Drag & Drop your image here</p>
-                            <span>or</span>
-                            <input type="file" id="file-input" accept="image/*" hidden>
-                            <label for="file-input" class="btn btn-primary">Browse Files</label>
-                        </div>
-                        <div id="uploaded-image-container" class="uploaded-image-container" style="display: none;">
-                            <button id="upload-close" class="upload-close" aria-label="Delete">&times;</button>
-                            <img id="uploaded-image" src="" alt="Uploaded Image">
-                            <div class="upload-actions">
-                                <button id="reset-button" class="btn btn-secondary" style="display: none;">Reset</button>
-                                <button id="generate-button" class="btn btn-primary btn-wide" style="display: none;">Generate 3D Model</button>
+                        <div id="upload-box" class="upload-box">
+                            <div id="upload-placeholder" class="upload-placeholder">
+                                <img src="assets/images/upload-icon.svg" alt="Upload Icon">
+                                <p>Drag & Drop your image here</p>
+                                <span>or</span>
+                            </div>
+                            <div id="uploaded-image-container" class="uploaded-image-container" style="display: none;">
+                                <button id="upload-close" class="upload-close" aria-label="Delete">&times;</button>
+                                <img id="uploaded-image" src="" alt="Uploaded Image">
+                                <div class="upload-actions">
+                                    <button id="reset-button" class="btn btn-secondary" style="display: none;">Reset</button>
+                                </div>
+                            </div>
+                            <!-- Browse Files 按钮放回内框 -->
+                            <div class="upload-browse">
+                              <input type="file" id="file-input" accept="image/*" hidden>
+                              <label for="file-input" class="btn btn-primary browse-btn">
+                                <span class="browse-icon" aria-hidden="true">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 42 42" fill="none">
+                                    <path d="M30.9043 23.3657C31.17 22.8779 31.8326 22.8779 32.0967 23.3657L34.3135 27.4497L38.1572 29.8062C38.615 30.0867 38.615 30.7905 38.1572 31.0728L34.3135 33.4263L32.0967 37.5103C31.8311 37.9983 31.1684 37.9983 30.9043 37.5103L28.6885 33.4263L24.8447 31.0728C24.3856 30.7906 24.3858 30.0868 24.8447 29.8062L28.6885 27.4497L30.9043 23.3657ZM15.3809 4.51904C15.8789 3.65806 17.1209 3.65834 17.6162 4.51904L21.7744 11.7261L28.9814 15.8833C29.8395 16.3784 29.8392 17.6204 28.9814 18.1187L21.7744 22.2729L17.6162 29.48C17.1182 30.3413 15.876 30.3413 15.3809 29.48L11.2266 22.2729L4.01953 18.1187C3.15883 17.6204 3.15855 16.3784 4.01953 15.8833L11.2266 11.7261L15.3809 4.51904Z" fill="url(#paint0_linear_272_883)"/>
+                                    <defs>
+                                      <linearGradient id="paint0_linear_272_883" x1="8" y1="9.5" x2="32" y2="38" gradientUnits="userSpaceOnUse">
+                                        <stop stop-color="#EEC2F7"/>
+                                        <stop offset="1" stop-color="#FFC4C8"/>
+                                      </linearGradient>
+                                    </defs>
+                                  </svg>
+                                </span>
+                                <span class="btn-text">Browse Files</span>
+                              </label>
                             </div>
                         </div>
-                    </div>
+                        <!-- 上传成功后显示的 Generate 按钮，位于内框外部、卡片底部 -->
+                        <div class="upload-generate">
+                          <button id="generate-button" class="btn btn-primary browse-btn generate-btn">
+                            <span class="sparkle-icon browse-icon" aria-hidden="true">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="42" height="42" viewBox="0 0 42 42" fill="none">
+                                <path d="M30.9043 23.3657C31.17 22.8779 31.8326 22.8779 32.0967 23.3657L34.3135 27.4497L38.1572 29.8062C38.615 30.0867 38.615 30.7905 38.1572 31.0728L34.3135 33.4263L32.0967 37.5103C31.8311 37.9983 31.1684 37.9983 30.9043 37.5103L28.6885 33.4263L24.8447 31.0728C24.3856 30.7906 24.3858 30.0868 24.8447 29.8062L28.6885 27.4497L30.9043 23.3657ZM15.3809 4.51904C15.8789 3.65806 17.1209 3.65834 17.6162 4.51904L21.7744 11.7261L28.9814 15.8833C29.8395 16.3784 29.8392 17.6204 28.9814 18.1187L21.7744 22.2729L17.6162 29.48C17.1182 30.3413 15.876 30.3413 15.3809 29.48L11.2266 22.2729L4.01953 18.1187C3.15883 17.6204 3.15855 16.3784 4.01953 15.8833L11.2266 11.7261L15.3809 4.51904Z" fill="url(#paint0_linear_generate)"/>
+                                <defs>
+                                  <linearGradient id="paint0_linear_generate" x1="8" y1="9.5" x2="32" y2="38" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#EEC2F7"/>
+                                    <stop offset="1" stop-color="#FFC4C8"/>
+                                  </linearGradient>
+                                </defs>
+                              </svg>
+                            </span>
+                            <span class="btn-text">Generate</span>
+                          </button>
+                        </div>
                     
                 </div>
                 <div class="preview-area">
-                    <h3>3D Model Preview</h3>
+                    <div class="preview-header">
+                      <h3>3D Model Preview</h3>
+                      <!-- Controls placed on the right in header -->
+                      <div id="preview-controls" class="preview-controls" style="display:none;">
+                        <button id="download-button" class="icon-btn" aria-label="Download" disabled>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M12 3v10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M8 11l4 4 4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <rect x="4" y="19" width="16" height="2" rx="1" fill="white"/>
+                          </svg>
+                          <span class="sr-only">Download</span>
+                        </button>
+                        <button id="print-button" class="icon-btn" aria-label="Print" disabled>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <rect x="6" y="3" width="12" height="6" rx="1.5" stroke="white" stroke-width="2"/>
+                            <rect x="6" y="15" width="12" height="6" rx="1.5" stroke="white" stroke-width="2"/>
+                            <rect x="4" y="9" width="16" height="6" rx="2" stroke="white" stroke-width="2"/>
+                            <circle cx="17" cy="12" r="1.5" fill="white"/>
+                          </svg>
+                          <span class="sr-only">Print</span>
+                        </button>
+                      </div>
+                    </div>
                     <div id="preview-container" class="preview-container">
                         <div id="preview-placeholder" class="preview-placeholder">
                             <p>Your 3D model will appear here</p>
@@ -105,11 +172,8 @@
                             </div>
                             <div class="loading-desc">You can wait here or check it later in My Assets.</div>
                         </div>
-                        <div id="model-viewer" style="display: none;"></div>
+                    <div id="model-viewer" style="display: none;"></div>
                     </div>
-                    <div id="preview-controls" class="preview-controls">
-    <button id="download-button" class="btn btn-primary btn-wide" disabled>Download</button>
-</div>
         </div>
       </div>
     </div>
@@ -119,15 +183,17 @@
 
 <footer>
     <div class="container">
-        <p>&copy; 2023 Polly. All rights reserved.</p>
+      <div class="footer-frame">
+        <p class="footer-copyright">&copy; 2023 Polly. All rights reserved.</p>
         <div class="footer-links contact-row">
-          <a href="mailto:support@polly3d.com" aria-label="Email support@polly3d.com">support@polly3d.com</a>
-          <a href="tel:8888888888" aria-label="Phone 888-888-8888">888-888-8888</a>
+          <a class="footer-email" href="mailto:support@polly3d.com" aria-label="Email support@polly3d.com">support@polly3d.com</a>
+          <a class="footer-phone" href="tel:8888888888" aria-label="Phone 888-888-8888">888-888-8888</a>
         </div>
         <div class="footer-list">
-          <a href="privacy.html">Privacy Policy</a>
-          <a href="terms.html">Terms of Use</a>
+          <a class="footer-privacy" href="privacy.html">Privacy Policy</a>
+          <a class="footer-terms" href="terms.html">Terms of Use</a>
         </div>
+      </div>
     </div>
 </footer>
 
@@ -135,88 +201,241 @@
         <span id="notification-message"></span>
     </div>
 
+    <script>
+      // Capture runtime errors to help locate source
+      (function(){
+        try {
+          window.addEventListener('error', function(e){
+            var msg = 'Error: ' + (e && e.message ? e.message : 'Unknown');
+            var src = (e && e.filename ? e.filename : '') + ':' + (e && e.lineno ? e.lineno : '?');
+            var t = msg + ' at ' + src;
+            var dc = document.getElementById('debug-content');
+            if (dc) { dc.textContent = t; }
+            console.error(t);
+          });
+        } catch(_){ }
+      })();
+    </script>
+
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay" style="display: none;">
         <div class="loading-spinner"></div>
         <p id="loading-text">Processing...</p>
     </div>
 
-    <!-- Login Modal (two-step like screenshot) -->
-    <div id="login-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-      <div style="background:#141820; color:#fff; border-radius:16px; padding:24px; width:420px; box-shadow:0 12px 32px rgba(0,0,0,0.35);">
-        <div style="display:flex; align-items:center; justify-content:space-between;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-weight:700; font-size:20px;">Polly</span><span style="width:10px; height:10px; background:#FFC65A; border-radius:50%; display:inline-block"></span>
-          </div>
-          <button id="login-close" aria-label="Close" style="border:none; background:transparent; font-size:22px; line-height:1; cursor:pointer; color:#fff">×</button>
+    <!-- Login Modal (Figma-styled) -->
+    <div id="login-modal" class="login-overlay">
+      <div class="login-card">
+        <div class="login-header">
+          <span class="login-title">Sign In</span>
+          <button id="login-close" aria-label="Close" class="login-close">×</button>
         </div>
 
         <!-- Step 1: method selection -->
-        <div id="login-step-select" style="margin-top:20px; display:block;">
-          <button id="select-email-or-phone" style="width:100%; padding:14px 16px; border:none; border-radius:999px; background:#fff; color:#111; font-size:16px; display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:14px;">
+        <div id="login-step-select" class="login-section" style="display:block;">
+          <button id="select-email-or-phone" class="login-btn neutral figma-cta">
             <span>✉️</span>
-            <span>Sign in with Email / Phone</span>
+          <span class="gradient-label">Continue with Email/Phone</span>
           </button>
-          <button id="select-apple" style="width:100%; padding:14px 16px; border:none; border-radius:999px; background:#fff; color:#111; font-size:16px; display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:14px;">
-            <span></span>
-            <span>Continue with Apple</span>
+            <button id="select-apple" class="login-btn neutral figma-cta">
+              <span class="gradient-icon"></span>
+              <span class="gradient-label">Continue with AppleID</span>
+            </button>
+          <button id="select-google" class="login-btn neutral figma-cta">
+            <span class="gradient-icon">G</span>
+            <span class="gradient-label">Continue with Google</span>
           </button>
-          <button id="select-google" style="width:100%; padding:14px 16px; border:none; border-radius:999px; background:#fff; color:#111; font-size:16px; display:flex; align-items:center; justify-content:center; gap:10px;">
-            <span style="color:#4285F4">G</span>
-            <span>Continue with Google</span>
-          </button>
-          <div style="margin-top:16px; font-size:12px; text-align:center; color:#B8C0CC;">
-            I agree to Polly's <a href="terms.html" style="color:#B8C0CC; text-decoration:underline;">Terms of Service</a> and <a href="privacy.html" style="color:#B8C0CC; text-decoration:underline;">Privacy Policy</a>
-          </div>
+          <div class="login-disclaimer">I agree to the <a href="terms.html">Terms of Use</a> and <a href="privacy.html">Privacy Policy</a></div>
         </div>
 
         <!-- Step 2: forms -->
-        <div id="login-step-forms" style="margin-top:20px; display:none;">
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
-            <button id="login-back" style="border:none; background:transparent; color:#fff; cursor:pointer">←</button>
+        <div id="login-step-forms" class="login-section" style="display:none;">
+          <div class="login-row" style="margin-bottom:10px;">
+            <button id="login-back" class="login-back">←</button>
             <div style="flex:1"></div>
           </div>
-          <div style="display:flex; gap:8px; margin-bottom:10px;">
-            <button id="tab-sms-otp" class="btn btn-secondary" style="flex:1">Phone</button>
-            <button id="tab-email-otp" class="btn btn-secondary" style="flex:1">Email</button>
+          <div class="login-tabs">
+            <button id="tab-sms-otp" class="login-btn neutral tab">Phone</button>
+            <button id="tab-email-otp" class="login-btn neutral tab">Email</button>
           </div>
           <!-- SMS OTP Login -->
-          <div id="login-form-sms-otp" style="display:flex; flex-direction:column; gap:10px;">
-            <div style="display:flex; gap:8px;">
-              <select id="sms-country" style="flex:0 0 120px; padding:8px 10px; border:1px solid #344055; background:#1b2230; color:#fff; border-radius:999px;">
+          <div id="login-form-sms-otp" class="login-form" style="display:flex;">
+            <div class="login-row">
+              <select id="sms-country" class="login-select">
                 <option value="+886">TW +886</option>
                 <option value="+86">CN +86</option>
                 <option value="+852">HK +852</option>
                 <option value="+81">JP +81</option>
                 <option value="+1">US +1</option>
               </select>
-              <input id="sms-otp-phone" type="tel" placeholder="Phone number" style="flex:1; padding:8px 16px; border:1px solid #344055; background:#1b2230; color:#fff; border-radius:999px;" />
+              <input id="sms-otp-phone" type="tel" placeholder="Phone number" class="login-input" />
             </div>
-            <div style="display:flex; gap:8px;">
-              <input id="sms-otp-code" type="text" placeholder="Verification code" style="flex:1; padding:8px 16px; border:1px solid #344055; background:#1b2230; color:#fff; border-radius:999px;" />
-              <button id="sms-otp-send" class="btn btn-secondary" style="flex:0 0 120px; border-radius:999px;">Send</button>
+            <div class="login-row">
+              <input id="sms-otp-code" type="text" placeholder="Verification code" class="login-input" />
+              <button id="sms-otp-send" class="login-btn neutral" style="flex:0 0 140px;">Send</button>
             </div>
-            <button id="sms-otp-login" class="btn btn-primary" style="width:100%; border-radius:999px;" disabled>Continue</button>
+            <button id="sms-otp-login" class="login-btn primary login-submit" disabled>Continue</button>
           </div>
           <!-- Email OTP Login -->
-          <div id="login-form-email-otp" style="display:none; flex-direction:column; gap:10px;">
-            <input id="email-otp-email" type="email" placeholder="Email" style="width:100%; padding:8px 16px; border:1px solid #344055; background:#1b2230; color:#fff; border-radius:999px;" />
-            <div style="display:flex; gap:8px;">
-              <input id="email-otp-code" type="text" placeholder="Verification code" style="flex:1; padding:8px 16px; border:1px solid #344055; background:#1b2230; color:#fff; border-radius:999px;" />
-              <button id="email-otp-send" class="btn btn-secondary" style="flex:0 0 120px; border-radius:999px;">Send</button>
+          <div id="login-form-email-otp" class="login-form">
+            <input id="email-otp-email" type="email" placeholder="Email" class="login-input" />
+            <div class="login-row">
+              <input id="email-otp-code" type="text" placeholder="Verification code" class="login-input" />
+              <button id="email-otp-send" class="login-btn neutral" style="flex:0 0 140px;">Send</button>
             </div>
-            <button id="email-otp-login" class="btn btn-primary" style="width:100%; border-radius:999px;" disabled>Continue</button>
+            <button id="email-otp-login" class="login-btn primary login-submit" disabled>Continue</button>
           </div>
-          <div style="margin-top:12px; font-size:12px; text-align:center; color:#B8C0CC;">
-            I agree to Polly's <a href="terms.html" style="color:#B8C0CC; text-decoration:underline;">Terms of Service</a> and <a href="privacy.html" style="color:#B8C0CC; text-decoration:underline;">Privacy Policy</a>
-          </div>
+          <div class="login-disclaimer">I agree to the <a href="terms.html">Terms of Use</a> and <a href="privacy.html">Privacy Policy</a></div>
         </div>
-
-        <div id="login-error" style="display:none; margin-top:10px; color:#ff6b6b; font-size:12px;">Sign in failed, please try again.</div>
+        <div id="login-error" class="login-error" style="display:none;">Sign in failed, please try again.</div>
       </div>
     </div>
 
+    <!-- Local dev: route API to dev proxy to avoid POST 501 on static server -->
+    <!-- Print Modal -->
+    <div id="print-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+      <div style="background:#141820; color:#fff; border-radius:16px; padding:24px; width:520px; box-shadow:0 12px 32px rgba(0,0,0,0.35);">
+        <div style="position:relative; display:flex; align-items:center; justify-content:center;">
+          <span style="font-weight:700; font-size:20px;">Print 3D Model</span>
+          <button id="print-close" aria-label="Close" style="position:absolute; right:0; top:0; border:none; background:transparent; font-size:22px; line-height:1; cursor:pointer; color:#fff">×</button>
+        </div>
+        <p style="margin-top:8px; color:#9aa0a6;">Please fill in shipping information. Each print costs USD $100.</p>
+        <form id="print-form" style="margin-top:16px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div style="grid-column:1 / span 2;">
+            <label for="print-name" style="display:block; margin-bottom:6px;">Contact Name *</label>
+            <input id="print-name" type="text" placeholder="Full Name" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
+          </div>
+          <div>
+            <label for="print-phone" style="display:block; margin-bottom:6px;">Phone *</label>
+            <input id="print-phone" type="tel" placeholder="+1 555 123 4567" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
+          </div>
+          <div>
+            <label for="print-email" style="display:block; margin-bottom:6px;">Email</label>
+            <input id="print-email" type="email" placeholder="name@example.com" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
+          </div>
+          <div style="grid-column:1 / span 2;">
+            <label for="print-address1" style="display:block; margin-bottom:6px;">Address Line 1 *</label>
+            <input id="print-address1" type="text" placeholder="Street, Building" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
+          </div>
+          <div style="grid-column:1 / span 2;">
+            <label for="print-address2" style="display:block; margin-bottom:6px;">Address Line 2</label>
+            <input id="print-address2" type="text" placeholder="Apartment, Suite" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
+          </div>
+          <div>
+            <label for="print-city" style="display:block; margin-bottom:6px;">City *</label>
+            <input id="print-city" type="text" placeholder="City" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
+          </div>
+          <div>
+            <label for="print-state" style="display:block; margin-bottom:6px;">State / Province *</label>
+            <input id="print-state" type="text" placeholder="State or Province" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
+          </div>
+          <div>
+            <label for="print-postal" style="display:block; margin-bottom:6px;">Postal Code *</label>
+            <input id="print-postal" type="text" placeholder="ZIP / Postal" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
+          </div>
+          <div>
+            <label for="print-country" style="display:block; margin-bottom:6px;">Country *</label>
+            <input id="print-country" type="text" placeholder="Country" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
+          </div>
+        </form>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+          <button id="print-cancel" class="btn" style="background:#2a2f3b; color:#fff; padding:10px 16px; border-radius:8px; border:none;">Cancel</button>
+          <button id="print-submit" class="btn btn-primary" style="padding:10px 16px; border-radius:8px; border:none;">Pay & Print ($100)</button>
+        </div>
+        <p id="print-error" style="display:none; margin-top:10px; color:#ff6b6b;">Error</p>
+      </div>
+    </div>
+    <script>
+      (function(){
+        try {
+          if (window.location.hostname === 'localhost') {
+            // Prefer local dev proxy first; keep remote as fallback
+            window.POLLY_API_BASE = 'http://localhost:8787/';
+            window.POLLY_API_FALLBACK_BASE = 'https://polly-3d.vercel.app/api/';
+          }
+        } catch(_) {}
+      })();
+    </script>
+    <!-- Apple Sign-In Web SDK -->
+    <script src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+    <script>
+      (function(){
+        try {
+          window.POLLY_AUTH_BASE = 
+            "https://sh-prd-llm.xverse.cn/yunjing/yunjing-proxy/";
+        } catch(_){ }
+      })();
+    </script>
     <script src="js/config.js"></script>
     <script src="js/main.js"></script>
+    <!-- Dev helper: preview and persist a local PNG as banner without copying files -->
+    <script>
+      (function() {
+        const banner = document.querySelector('.converter-banner');
+        const bannerImg = banner ? banner.querySelector('img') : null;
+        if (!banner || !bannerImg) return;
+
+        // Persisted banner from previous selection
+        try {
+          const saved = localStorage.getItem('POLLY_BANNER_PNG_DATAURL');
+          if (saved) bannerImg.src = saved;
+        } catch(_) {}
+
+        // Drag & Drop PNG onto the banner area to preview immediately
+        banner.addEventListener('dragover', (e) => { e.preventDefault(); });
+        banner.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+          if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = () => {
+              bannerImg.src = reader.result;
+              try { localStorage.setItem('POLLY_BANNER_PNG_DATAURL', reader.result); } catch(_) {}
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+
+        // If URL has ?debug=1, show a small upload control in the debug panel
+        const params = new URLSearchParams(location.search);
+        const debugMode = params.get('debug') === '1';
+        const debugPanel = document.getElementById('debug-panel');
+        if (debugMode && debugPanel) {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.style.display = 'none';
+          const btn = document.createElement('button');
+          btn.textContent = 'Load Banner PNG';
+          btn.className = 'btn btn-secondary';
+          btn.style.marginTop = '8px';
+          const resetBtn = document.createElement('button');
+          resetBtn.textContent = 'Reset Banner';
+          resetBtn.className = 'btn';
+          resetBtn.style.marginTop = '8px';
+          debugPanel.appendChild(btn);
+          debugPanel.appendChild(input);
+          debugPanel.appendChild(resetBtn);
+          btn.addEventListener('click', () => input.click());
+          input.addEventListener('change', (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (f && f.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                bannerImg.src = reader.result;
+                try { localStorage.setItem('POLLY_BANNER_PNG_DATAURL', reader.result); } catch(_) {}
+              };
+              reader.readAsDataURL(f);
+            }
+          });
+          resetBtn.addEventListener('click', () => {
+            try { localStorage.removeItem('POLLY_BANNER_PNG_DATAURL'); } catch(_) {}
+            bannerImg.src = 'assets/images/converter-title.png';
+          });
+        }
+
+        // 页面默认不显示工具面板；需要时请用 ?debug=1
+      })();
+    </script>
 </body>
 </html>

@@ -10,6 +10,7 @@
     { "source": "/request-sms-code", "destination": "/api/request_sms_code" },
     { "source": "/login-sms-code", "destination": "/api/login_sms_code" },
     { "source": "/oauth/google/start", "destination": "/api/oauth_google_start" },
-    { "source": "/oauth/apple/start", "destination": "/api/oauth_apple_start" }
+    { "source": "/oauth/apple/start", "destination": "/api/oauth_apple_start" },
+    { "source": "/print-checkout", "destination": "/api/print_checkout" }
   ]
 }

@@ -7,6 +7,7 @@ const uploadPlaceholder = document.getElementById('upload-placeholder');
 const resetButton = document.getElementById('reset-button');
 const generateButton = document.getElementById('generate-button');
 const previewContainer = document.getElementById('preview-container');
+const generateBtnText = document.querySelector('#generate-button .btn-text');
 const uploadClose = document.getElementById('upload-close');
 const previewPlaceholder = document.getElementById('preview-placeholder');
 const modelViewer = document.getElementById('model-viewer');
@@ -15,6 +16,21 @@ const solidModeBtn = document.getElementById('solid-view');
 const wireframeModeBtn = document.getElementById('wireframe-view');
 const resetViewBtn = document.getElementById('reset-view');
 const downloadBtn = document.getElementById('download-button');
+const printBtn = document.getElementById('print-button');
+const printModal = document.getElementById('print-modal');
+const printClose = document.getElementById('print-close');
+const printCancel = document.getElementById('print-cancel');
+const printSubmit = document.getElementById('print-submit');
+const printError = document.getElementById('print-error');
+const printName = document.getElementById('print-name');
+const printPhone = document.getElementById('print-phone');
+const printEmail = document.getElementById('print-email');
+const printAddress1 = document.getElementById('print-address1');
+const printAddress2 = document.getElementById('print-address2');
+const printCity = document.getElementById('print-city');
+const printState = document.getElementById('print-state');
+const printPostal = document.getElementById('print-postal');
+const printCountry = document.getElementById('print-country');
 const modelInfo = document.getElementById('model-info');
 const notification = document.getElementById('notification');
 const notificationMessage = document.getElementById('notification-message');
@@ -67,17 +83,21 @@ let imageData = null;
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', initApp);
-uploadBox.addEventListener('dragover', handleDragOver);
-uploadBox.addEventListener('dragleave', handleDragLeave);
-uploadBox.addEventListener('drop', handleDrop);
-fileInput.addEventListener('change', handleFileSelect);
-resetButton.addEventListener('click', resetUpload);
-generateButton.addEventListener('click', generate3DModel);
+uploadBox && uploadBox.addEventListener('dragover', handleDragOver);
+uploadBox && uploadBox.addEventListener('dragleave', handleDragLeave);
+uploadBox && uploadBox.addEventListener('drop', handleDrop);
+fileInput && fileInput.addEventListener('change', handleFileSelect);
+resetButton && resetButton.addEventListener('click', resetUpload);
+generateButton && generateButton.addEventListener('click', generate3DModel);
 uploadClose && uploadClose.addEventListener('click', resetUpload);
  solidModeBtn && solidModeBtn.addEventListener('click', () => setModelMode('solid'));
  wireframeModeBtn && wireframeModeBtn.addEventListener('click', () => setModelMode('wireframe'));
  resetViewBtn && resetViewBtn.addEventListener('click', resetView);
- downloadBtn && downloadBtn.addEventListener('click', downloadModel);
+downloadBtn && downloadBtn.addEventListener('click', downloadModel);
+printBtn && printBtn.addEventListener('click', openPrintModal);
+printClose && printClose.addEventListener('click', closePrintModal);
+printCancel && printCancel.addEventListener('click', closePrintModal);
+printSubmit && printSubmit.addEventListener('click', submitPrintOrder);
 // Login events
 loginLink && loginLink.addEventListener('click', (e) => { e.preventDefault(); openLoginModal(); });
 loginClose && loginClose.addEventListener('click', closeLoginModal);
@@ -151,11 +171,18 @@ emailOtpCode && emailOtpCode.addEventListener('input', () => { emailOtpLogin.dis
 smsOtpCode && smsOtpCode.addEventListener('input', () => { smsOtpLogin.disabled = !(smsOtpCode.value && smsOtpCode.value.trim().length > 0); });
 
 async function requestEmailCode(){
-  const email = emailOtpEmail?.value?.trim();
+  const email = (emailOtpEmail && emailOtpEmail.value) ? emailOtpEmail.value.trim() : '';
   if (!email) return setLoginError('Please enter email');
   try {
     emailOtpSend.disabled = true;
-    const url = (window.POLLY_API?.url) ? window.POLLY_API.url('request-email-code') : '/request-email-code';
+    const url = (function(path){
+      try {
+        if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
+          return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+        }
+      } catch(_){ }
+      return '/' + path.replace(/^\//,'');
+    })('request-email-code');
     const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ email }) });
     const txt = await res.text(); let json={}; try{ json = JSON.parse(txt); }catch(_){}
     if (!res.ok) throw new Error(json.error || 'Failed to send verification code');
@@ -165,11 +192,18 @@ async function requestEmailCode(){
 }
 
 async function loginWithEmailCode(){
-  const email = emailOtpEmail?.value?.trim();
-  const code = emailOtpCode?.value?.trim();
+  const email = (emailOtpEmail && emailOtpEmail.value) ? emailOtpEmail.value.trim() : '';
+  const code = (emailOtpCode && emailOtpCode.value) ? emailOtpCode.value.trim() : '';
   if (!email || !code) return setLoginError('Please enter email and verification code');
   try {
-    const url = (window.POLLY_API?.url) ? window.POLLY_API.url('login-email-code') : '/login-email-code';
+    const url = (function(path){
+      try {
+        if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
+          return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+        }
+      } catch(_){ }
+      return '/' + path.replace(/^\//,'');
+    })('login-email-code');
     const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ email, code }) });
     const txt = await res.text(); let json={}; try{ json = JSON.parse(txt); }catch(_){}
     if (!res.ok) throw new Error(json.error || 'Verification code sign-in failed');
@@ -179,18 +213,26 @@ async function loginWithEmailCode(){
     setAuthHeaderFromStorage();
     closeLoginModal();
     showNotification('Signed in successfully', 'success');
-    if (generateButton) { generateButton.disabled = false; generateButton.textContent = 'Generate'; }
+    if (generateButton) { generateButton.disabled = false; }
+    if (generateBtnText) generateBtnText.textContent = 'Generate';
   } catch(e){ setLoginError(e.message || 'Sign-in failed'); }
 }
 
 async function requestSmsCode(){
-  let phone = smsOtpPhone?.value?.trim();
-  const cc = smsCountry?.value || '';
+  let phone = (smsOtpPhone && smsOtpPhone.value) ? smsOtpPhone.value.trim() : '';
+  const cc = (smsCountry && smsCountry.value) ? smsCountry.value : '';
   if (cc) phone = `${cc}${phone || ''}`;
   if (!phone) return setLoginError('Please enter phone number');
   try {
     smsOtpSend.disabled = true;
-    const url = (window.POLLY_API?.url) ? window.POLLY_API.url('request-sms-code') : '/request-sms-code';
+    const url = (function(path){
+      try {
+        if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
+          return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+        }
+      } catch(_){ }
+      return '/' + path.replace(/^\//,'');
+    })('request-sms-code');
     const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ phone }) });
     const txt = await res.text(); let json={}; try{ json = JSON.parse(txt); }catch(_){}
     if (!res.ok) throw new Error(json.error || 'Failed to send verification code');
@@ -200,11 +242,18 @@ async function requestSmsCode(){
 }
 
 async function loginWithSmsCode(){
-  const phone = smsOtpPhone?.value?.trim();
-  const code = smsOtpCode?.value?.trim();
+  const phone = (smsOtpPhone && smsOtpPhone.value) ? smsOtpPhone.value.trim() : '';
+  const code = (smsOtpCode && smsOtpCode.value) ? smsOtpCode.value.trim() : '';
   if (!phone || !code) return setLoginError('Please enter phone number and verification code');
   try {
-    const url = (window.POLLY_API?.url) ? window.POLLY_API.url('login-sms-code') : '/login-sms-code';
+    const url = (function(path){
+      try {
+        if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
+          return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+        }
+      } catch(_){ }
+      return '/' + path.replace(/^\//,'');
+    })('login-sms-code');
     const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({ phone, code }) });
     const txt = await res.text(); let json={}; try{ json = JSON.parse(txt); }catch(_){}
     if (!res.ok) throw new Error(json.error || 'Verification code sign-in failed');
@@ -214,19 +263,34 @@ async function loginWithSmsCode(){
     setAuthHeaderFromStorage();
     closeLoginModal();
     showNotification('Signed in successfully', 'success');
-    if (generateButton) { generateButton.disabled = false; generateButton.textContent = 'Generate'; }
+    if (generateButton) { generateButton.disabled = false; }
+    if (generateBtnText) generateBtnText.textContent = 'Generate';
   } catch(e){ setLoginError(e.message || 'Sign-in failed'); }
 }
 
 function loginWithGoogle(){
-  const base = (window.POLLY_API?.url) ? window.POLLY_API.url('oauth/google/start') : '/oauth/google/start';
+  const base = (function(path){
+    try {
+      if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
+        return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+      }
+    } catch(_){ }
+    return '/' + path.replace(/^\//,'');
+  })('oauth/google/start');
   const redirectUri = window.location.origin + '/';
   const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
   window.location.href = url;
 }
 
 function loginWithApple(){
-  const base = (window.POLLY_API?.url) ? window.POLLY_API.url('oauth/apple/start') : '/oauth/apple/start';
+  const base = (function(path){
+    try {
+      if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
+        return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+      }
+    } catch(_){ }
+    return '/' + path.replace(/^\//,'');
+  })('oauth/apple/start');
   const redirectUri = window.location.origin + '/';
   const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
   window.location.href = url;
@@ -291,8 +355,8 @@ async function initApp() {
     // Temporarily allow generation without login
     if (generateButton) {
       generateButton.disabled = false;
-      generateButton.textContent = 'Generate';
     }
+    if (generateBtnText) generateBtnText.textContent = 'Generate';
   }
 
 function captureTokenFromUrl(){
@@ -395,25 +459,32 @@ function displayUploadedImage(src) {
     uploadedImage.src = src;
     uploadedImageContainer.style.display = 'block';
     document.querySelector('.upload-placeholder').style.display = 'none';
+    const uploadBrowse = document.querySelector('.upload-browse');
+    if (uploadBrowse) uploadBrowse.style.display = 'none';
+    if (uploadArea) uploadArea.classList.add('has-image');
     // 使用右上角关闭按钮，隐藏旧 Reset
     resetButton.style.display = 'none';
     generateButton.style.display = 'inline-block';
     // Update button copy after upload
     resetButton.textContent = 'Delete';
     // Temporarily allow generation without login
-    generateButton.textContent = 'Generate';
+    if (generateBtnText) generateBtnText.textContent = 'Generate';
     generateButton.disabled = false;
   }
 
 function resetUpload() {
     uploadedImageContainer.style.display = 'none';
     document.querySelector('.upload-placeholder').style.display = 'block';
+    const uploadBrowse = document.querySelector('.upload-browse');
+    if (uploadBrowse) uploadBrowse.style.display = 'flex';
+    if (uploadArea) uploadArea.classList.remove('has-image');
     fileInput.value = '';
     uploadedImage.src = '';
     imageData = null;
     // Optional: revert button text when no upload is present
     if (resetButton) resetButton.textContent = 'Reset';
-    if (generateButton) generateButton.textContent = 'Generate 3D Model';
+    if (generateBtnText) generateBtnText.textContent = 'Generate';
+    if (generateButton) generateButton.style.display = 'none';
     // Hide result image section
     const resultSection = document.getElementById('result-section');
     const resultImage = document.getElementById('result-image');
@@ -448,7 +519,7 @@ function generate3DModel() {
     
     // Change button state
     generateButton.disabled = true;
-    generateButton.textContent = 'Generating...';
+    if (generateBtnText) generateBtnText.textContent = 'Generating...';
     
     // Move preview area to loading state
     setPreviewState('loading');
@@ -495,7 +566,7 @@ function generate3DModel() {
             };
             updateDebugPanel();
             generateButton.disabled = false;
-            generateButton.textContent = 'Generate';
+            if (generateBtnText) generateBtnText.textContent = 'Generate';
             showNotification('Model generated successfully! (mock)', 'success');
             return;
         } catch (e) {
@@ -503,7 +574,7 @@ function generate3DModel() {
             showNotification('Mock model load failed. Check local GLB files.', 'error');
             setPreviewState('default');
             generateButton.disabled = false;
-            generateButton.textContent = 'Generate';
+            if (generateBtnText) generateBtnText.textContent = 'Generate';
             updateDebugPanel(e);
             return;
         }
@@ -617,7 +688,7 @@ function generate3DModel() {
                   window.modelUrl = modelUrl;
                   loadGLBModel(modelUrl);
                   generateButton.disabled = false;
-                  generateButton.textContent = 'Generate';
+                  if (generateBtnText) generateBtnText.textContent = 'Generate';
                   showNotification('Model generated successfully! (sync fallback)', 'success');
                   updateDebugPanel();
                   // Prevent subsequent then from running
@@ -628,7 +699,7 @@ function generate3DModel() {
                   console.error('Fallback sync flow error:', err);
                   setPreviewState('default');
                   generateButton.disabled = false;
-                  generateButton.textContent = 'Generate';
+                  if (generateBtnText) generateBtnText.textContent = 'Generate';
                   const msg = (err && err.message) ? err.message : 'Failed to generate 3D model.';
                   showNotification(msg + ' Please try again.', 'error');
                   updateDebugPanel(err);
@@ -722,7 +793,7 @@ function generate3DModel() {
           window.modelUrl = modelUrl;
           loadGLBModel(modelUrl);
           generateButton.disabled = false;
-          generateButton.textContent = 'Generate';
+          if (generateBtnText) generateBtnText.textContent = 'Generate';
           showNotification('Model generated successfully!', 'success');
           updateDebugPanel();
         })
@@ -731,7 +802,7 @@ function generate3DModel() {
           console.error('Async flow error:', err);
           setPreviewState('default');
           generateButton.disabled = false;
-          generateButton.textContent = 'Generate';
+          if (generateBtnText) generateBtnText.textContent = 'Generate';
           const msg = (err && err.message) ? err.message : 'Failed to generate 3D model.';
           showNotification(msg + ' Please try again.', 'error');
           updateDebugPanel(err);
@@ -767,7 +838,7 @@ function generate3DModel() {
         window.modelUrl = modelUrl;
         loadGLBModel(modelUrl);
         generateButton.disabled = false;
-        generateButton.textContent = 'Generate';
+        if (generateBtnText) generateBtnText.textContent = 'Generate';
         showNotification('Model generated successfully!', 'success');
         updateDebugPanel();
       })
@@ -776,7 +847,7 @@ function generate3DModel() {
         console.error('Error generating 3D model:', err);
         setPreviewState('default');
         generateButton.disabled = false;
-        generateButton.textContent = 'Generate';
+        if (generateBtnText) generateBtnText.textContent = 'Generate';
         const msg = (err && err.message) ? err.message : 'Failed to generate 3D model.';
         showNotification(msg + ' Please try again.', 'error');
         updateDebugPanel(err);
@@ -950,6 +1021,7 @@ function setPreviewState(state) {
             if (modelInfo) modelInfo.style.display = 'none';
             if (previewLoading) previewLoading.style.display = 'none';
             if (downloadBtn) downloadBtn.disabled = true;
+            if (printBtn) printBtn.disabled = true;
             break;
         case 'loading':
             if (previewPlaceholder) previewPlaceholder.style.display = 'none';
@@ -970,6 +1042,8 @@ function setPreviewState(state) {
             if (modelViewer) modelViewer.style.display = 'block';
             if (previewControls) previewControls.style.display = 'flex';
             if (modelInfo) modelInfo.style.display = 'block';
+            if (downloadBtn) downloadBtn.disabled = false;
+            if (printBtn) printBtn.disabled = false;
             break;
         default:
             break;
@@ -1011,6 +1085,94 @@ function downloadModel() {
         link.click();
         document.body.removeChild(link);
     }
+}
+
+function openPrintModal(){
+  if (!printModal) return;
+  try { printError && (printError.style.display = 'none'); } catch(_){}
+  printModal.style.display = 'flex';
+}
+
+function closePrintModal(){
+  if (!printModal) return;
+  printModal.style.display = 'none';
+}
+
+function setPrintError(msg){
+  if (!printError) return;
+  printError.textContent = msg || 'Error';
+  printError.style.display = 'block';
+}
+
+async function submitPrintOrder(){
+  try {
+    const name = (printName && printName.value || '').trim();
+    const phone = (printPhone && printPhone.value || '').trim();
+    const email = (printEmail && printEmail.value || '').trim();
+    const address1 = (printAddress1 && printAddress1.value || '').trim();
+    const address2 = (printAddress2 && printAddress2.value || '').trim();
+    const city = (printCity && printCity.value || '').trim();
+    const state = (printState && printState.value || '').trim();
+    const postal = (printPostal && printPostal.value || '').trim();
+    const country = (printCountry && printCountry.value || '').trim();
+
+    if (!name || !phone || !address1 || !city || !state || !postal || !country) {
+      return setPrintError('Please fill all required fields marked with *');
+    }
+
+    // If a payment link is configured, redirect directly
+    if (window.POLLY_PAYMENT_LINK) {
+      window.location.href = window.POLLY_PAYMENT_LINK;
+      return;
+    }
+
+    const payload = {
+      contact_name: name,
+      phone,
+      email,
+      address1,
+      address2,
+      city,
+      state,
+      postal,
+      country,
+      // Optional: include current page as context
+      page_url: window.location.href,
+      // Price fixed at $100 per requirement
+      price_usd_cents: 10000,
+      success_url: window.location.origin + '/?print=success',
+      cancel_url: window.location.origin + '/?print=cancel'
+    };
+
+    const url = (function(path){
+      try {
+        if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
+          return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+        }
+      } catch(_){ }
+      return '/' + path.replace(/^\//,'');
+    })('print-checkout');
+
+    printSubmit && (printSubmit.disabled = true);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const txt = await res.text(); let json={}; try{ json = JSON.parse(txt); }catch(_){}
+    if (!res.ok) {
+      const msg = json.error || json.message || 'Failed to start payment';
+      throw new Error(msg);
+    }
+    const checkoutUrl = json.url || json.checkout_url || '';
+    if (!checkoutUrl) throw new Error('No checkout URL returned');
+    closePrintModal();
+    window.location.href = checkoutUrl;
+  } catch(e) {
+    setPrintError(e && e.message ? e.message : 'Payment initialization failed');
+  } finally {
+    printSubmit && (printSubmit.disabled = false);
+  }
 }
 
 // Utility Functions
@@ -1081,11 +1243,13 @@ function compressImageToDataURL(imgEl, maxDim = 1280, quality = 0.85, preferWebp
 
 // Helper: request with one fallback attempt
 async function makeRequestWithFallback(primaryUrl, fallbackUrl, opts) {
-    const tryFetch = async (url) => {
+    const baseOpts = opts || {};
+    const tryFetch = async (url, useOpts) => {
+        const finalOpts = useOpts || baseOpts;
         const start = Date.now();
         let res;
         try {
-          res = await fetch(url, opts);
+          res = await fetch(url, finalOpts);
         } catch (err) {
           const duration = Date.now() - start;
           const attempt = {
@@ -1122,8 +1286,20 @@ async function makeRequestWithFallback(primaryUrl, fallbackUrl, opts) {
     } catch (e) {
         // If aborted or timeout or non-2xx, try fallback once
         if (fallbackUrl) {
+            let fallbackOpts = baseOpts;
+            try {
+              const aborted = (baseOpts && baseOpts.signal && baseOpts.signal.aborted);
+              if (e && e.name === 'AbortError') {
+                // Remove aborted signal for fallback attempt
+                fallbackOpts = Object.assign({}, baseOpts);
+                delete fallbackOpts.signal;
+              } else if (aborted) {
+                fallbackOpts = Object.assign({}, baseOpts);
+                delete fallbackOpts.signal;
+              }
+            } catch(_) {}
             console.warn('Primary request failed, trying fallback:', e.message);
-            return await tryFetch(fallbackUrl);
+            return await tryFetch(fallbackUrl, fallbackOpts);
         }
         throw e;
     }
@@ -1160,3 +1336,4 @@ function updateDebugPanel(err) {
     }
     debugContent.textContent = lines.join('\n');
 }
+const uploadArea = document.querySelector('.upload-area');

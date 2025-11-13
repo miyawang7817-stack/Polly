@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;800&display=swap');
 /* Global Styles */
 :root {
     --primary-color: #4a6cf7; /* 电蓝主色 */
@@ -10,6 +11,10 @@
     --success: #28a745;
     --danger: #dc3545;
     --warning: #ffc107;
+    --radius-button: 50px;
+    --radius-card: 20px;
+    --radius-section: 27px;
+    --shadow-card: 0 6px 18px rgba(0,0,0,0.22);
 }
 
 * {
@@ -28,7 +33,7 @@ body {
 
 .container {
     width: 100%;
-    max-width: 1200px;
+    max-width: 1200px; /* desktop frame ≈ 1200 */
     margin: 0 auto;
     padding: 0 15px;
 }
@@ -55,15 +60,9 @@ body {
     background-color: #3a5bd9;
 }
 
-/* Generate 按钮前置魔杖图标 */
-#generate-button::before {
-  content: '🪄';
-  display: inline-block;
-  margin-right: 8px;
-  font-size: 18px;
-  line-height: 1;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
-}
+/* 旧的 ::before 图标已弃用，避免覆盖内置 SVG 图标 */
+#generate-button::before { content: none; }
+
 
 .btn-secondary {
     background-color: var(--secondary-color);
@@ -96,7 +95,7 @@ body {
 
 /* Header & Navigation */
 header {
-    background-color: var(--surface-color);
+    background-color: rgba(255, 255, 255, 0.4);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
     position: sticky;
     top: 0;
@@ -107,7 +106,8 @@ nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 36px;
+    height: 80px;
+    padding: 0 24px;
 }
 
 .logo {
@@ -117,36 +117,67 @@ nav {
     text-decoration: none;
 }
 .logo img, .logo picture {
-    width: 28px;
-    height: 28px;
+    width: 35px;
+    height: 35px;
     display: block;
+    border-radius: 0;
+    box-shadow: none;
 }
 .logo-text {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--primary-color);
+    font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: #111111;
 }
 
 .nav-links {
     display: flex;
     list-style: none;
+    gap: clamp(24px, 5vw, 64px);
+    align-items: center;
 }
 
 .nav-links li {
-    margin: 0 18px;
+    margin: 0;
+    display: flex;
+    align-items: center;
 }
 
 .nav-links a {
+    font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    height: 80px;
     text-decoration: none;
-    color: var(--text-color);
-    font-weight: 500;
+    color: rgba(17, 17, 17, 0.5);
+    font-weight: 400;
     transition: color 0.2s ease;
-    font-size: 16px;
+    font-size: 20px;
 }
 
-.nav-links a:hover, .nav-links a.active {
-    color: var(--primary-color);
+/* 登录按钮胶囊样式（桌面） */
+#login-link {
+  font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 114px;
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #FFFFFF;
+  background: rgba(255, 255, 255, 0.5);
+  color: rgba(17, 17, 17, 0.9);
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
+#login-link:hover {
+  color: rgba(17, 17, 17, 0.9);
+  border-color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.nav-links a:hover { color: rgba(17, 17, 17, 0.9); }
+.nav-links a.active { color: rgba(17, 17, 17, 0.9); font-weight: 600; }
 
 /* Hero Section */
 .hero {
@@ -169,29 +200,86 @@ nav {
 .hero-content {
     max-width: 960px;
     margin: 0 auto;
+    /* 距离导航底部精确 84px */
+    padding: 84px 16px 0;
 }
 
 .hero h1 {
-    font-size: clamp(40px, 5vw, 64px);
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    margin-bottom: 18px;
-    /* 更亮的白色渐变以增强可读性 */
-    background: linear-gradient(90deg, #ffffff 0%, #eef4ff 30%, #e3ecff 60%, #ffffff 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    filter: drop-shadow(0 2px 12px rgba(0,0,0,0.38));
-    background-size: 200% auto;
-    animation: textShine 6s linear infinite;
+    font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size: 60px;
+    font-weight: 500;
+    line-height: 80px; /* Figma: line-height 80 */
+    letter-spacing: normal;
+    text-transform: capitalize;
+    color: #111111;
+    margin: 0 auto 18px;
+    max-width: 559px; /* Figma: width 559 */
+    position: relative;
+    left: 7.5px; /* Figma: slight right offset */
 }
 
 .hero p {
-    font-size: 18px;
-    margin-bottom: 28px;
-    color: rgba(255,255,255,0.95);
-    text-shadow: 0 2px 12px rgba(0,0,0,0.36);
+    font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-weight: 300;
+    font-size: 28px;
+    line-height: 40px;
+    text-align: center;
+    text-transform: capitalize;
+    color: #8C8C8C;
+    margin: 0 auto 20px;
+    max-width: 528px;
+    position: relative;
+    left: -4px;
+    text-shadow: none;
+}
+
+/* Hero CTA 渐变胶囊（含两层光晕） */
+.hero .cta-breathe {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  width: 249px;
+  height: 80px;
+  padding: 0 20px;
+  margin: 16px auto 0;
+  border-radius: 50px;
+  background: linear-gradient(100.84deg, #EEC2F8 12.79%, #FFC4C8 80.62%);
+  color: rgba(17, 17, 17, 0.9);
+  text-transform: capitalize;
+  font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-weight: 500;
+  font-size: 28px;
+  line-height: 80px;
+  text-align: center;
+}
+
+.hero .cta-breathe::before,
+.hero .cta-breathe::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 100px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Frame 11：内层光晕 269x100 */
+.hero .cta-breathe::before {
+  width: 269px;
+  height: 100px;
+  background: linear-gradient(100.84deg, rgba(238, 194, 248, 0.2) 12.79%, rgba(255, 196, 200, 0.2) 80.62%);
+}
+
+/* Frame 12：外层光晕 289x116 */
+.hero .cta-breathe::after {
+  width: 289px;
+  height: 116px;
+  background: linear-gradient(100.84deg, rgba(238, 194, 248, 0.2) 12.79%, rgba(255, 196, 200, 0.2) 80.62%);
 }
 
 /* Hero animated accents */
@@ -234,21 +322,12 @@ nav {
     background-size: 160% 160%, 140% 140%, 140% 140%, cover, 22px 22px, 22px 22px, cover;
   }
 }
-
-  50% {
-    background-position: 46% 44%, 10% 30%, 92% 32%, center, 0 0, 0 0, center;
-    background-size: 170% 170%, 150% 150%, 150% 150%, cover, 22px 22px, 22px 22px, cover;
-  }
-  100% {
-    background-position: 50% 40%, 12% 28%, 88% 34%, center, 0 0, 0 0, center;
-    background-size: 160% 160%, 140% 140%, 140% 140%, cover, 22px 22px, 22px 22px, cover;
-  }
-}
-}
+/* removed stray duplicate keyframe blocks to fix CSS syntax */
 
 /* Converter Section */
 .converter-section {
-    padding: clamp(96px, 10vw, 160px) 0;
+    /* Desktop: 距离上方 CTA 精确 84px（Hero 底部 60 + 此处 24） */
+    padding: 24px 0 120px; 
 }
 
 .converter-section .container h2 {
@@ -259,7 +338,7 @@ nav {
 
 .converter-container {
     display: flex;
-    gap: 30px;
+    gap: 24px;
     margin-top: 30px;
     align-items: stretch; /* 两栏等高 */
 }
@@ -267,8 +346,8 @@ nav {
 .upload-area, .preview-area {
     flex: 1;
     background-color: var(--surface-color);
-    border-radius: 10px;
-    padding: 30px;
+    border-radius: var(--radius-section, 27px);
+    padding: 24px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.28);
     display: flex;
     flex-direction: column; /* 让内部内容按列排布，便于等高 */
@@ -277,11 +356,11 @@ nav {
 .upload-box {
     position: relative;
     border: 1px solid #1f2a37;
-    border-radius: 16px;
-    padding: 24px;
+    border-radius: var(--radius-card, 16px);
+    padding: 20px;
     text-align: center;
     margin: 20px 0;
-    min-height: 360px; /* 与右侧预览更协调 */
+    min-height: 458px; /* 贴近 Figma 拖拽框高度 */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -306,12 +385,13 @@ nav {
 .upload-placeholder p {
     margin-bottom: 10px;
     font-size: 18px;
+    color: rgba(0,0,0,0.6); /* 贴近设计中的行动提示色 */
 }
 
 .upload-placeholder span {
     display: block;
     margin: 10px 0;
-    color: var(--secondary-color);
+    color: rgba(0,0,0,0.4); /* 贴近设计中的次要提示色 */
 }
 
 .uploaded-image-container {
@@ -320,7 +400,7 @@ nav {
 
 .uploaded-image-container img {
     max-width: 100%;
-    max-height: 300px;
+    max-height: 360px; /* 上传后预览更接近参考尺寸 */
     border-radius: 5px;
     margin-bottom: 15px;
 }
@@ -349,7 +429,7 @@ nav {
   width: 100%;
   padding: 16px 20px;
   font-size: 18px;
-  border-radius: 16px;
+  border-radius: var(--radius-button, 16px);
 }
 .upload-actions { width: 100%; margin-top: auto; }
 .upload-actions .btn-primary { box-shadow: 0 6px 16px rgba(74,108,247,0.32); }
@@ -376,9 +456,9 @@ nav {
 
 .preview-container {
     width: 100%;
-    min-height: 360px; /* 与上传框一致 */
+    min-height: 340px; /* match upload area */
     background-color: #0f131a;
-    border-radius: 10px;
+    border-radius: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -409,44 +489,45 @@ nav {
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  background: rgba(0, 0, 0, 0.45);
+  background: transparent; /* 生成中不改变背景为灰色 */
   z-index: 5;
-  color: var(--primary-color); /* 统一为网站主色 */
+  color: rgba(17, 17, 17, 0.9); /* 与 CTA 按钮一致的深色文本 */
 }
 .loading-title {
-  margin-top: 16px;
-  font-size: 20px;
+  margin-top: 12px;
+  font-size: 18px;
   font-weight: 700;
-  color: var(--primary-color);
+  color: rgba(17, 17, 17, 0.9);
 }
 .loading-visual { margin-bottom: 8px; }
 .loading-orbit {
   position: relative;
   width: 140px; height: 140px;
   border-radius: 50%;
-  border: 2px solid rgba(74,108,247,0.35);
-  box-shadow: 0 0 18px rgba(74,108,247,0.28);
+  border: 2px solid rgba(238, 194, 248, 0.35); /* CTA 渐变外圈：淡紫 */
+  box-shadow: 0 0 18px rgba(238, 194, 248, 0.28); /* 淡紫光晕 */
   animation: orbit-spin 6s linear infinite;
 }
 .loading-orbit::after {
   content: '';
   position: absolute; inset: 12px;
   border-radius: 50%;
-  border: 2px solid rgba(74,108,247,0.22);
+  border: 2px solid rgba(255, 196, 200, 0.35); /* CTA 渐变内圈：淡粉 */
 }
 .loading-cube {
   position: absolute; left: 50%; top: 50%;
   width: 70px; height: 70px;
   transform: translate(-50%, -50%) rotate(18deg);
   border-radius: 16px;
-  background: linear-gradient(135deg, #10b981, #22d3ee);
-  box-shadow: 0 10px 26px rgba(16,185,129,0.25);
+  background: linear-gradient(100.84deg, #EEC2F8 12.79%, #FFC4C8 80.62%); /* 与 CTA 一致的紫粉渐变 */
+  box-shadow: 0 10px 26px rgba(238, 194, 248, 0.25);
   animation: cube-breathe 2.6s ease-in-out infinite;
 }
 .loading-dot {
   position: absolute;
   width: 10px; height: 10px; border-radius: 50%;
-  background: var(--primary-color); box-shadow: 0 0 10px rgba(74,108,247,0.6);
+  background: linear-gradient(100.84deg, #EEC2F8, #FFC4C8);
+  box-shadow: 0 0 10px rgba(238, 194, 248, 0.6);
 }
 .loading-dot.d1 { top: 10px; left: 50%; transform: translateX(-50%); }
 .loading-dot.d2 { bottom: 16px; left: 16px; }
@@ -462,22 +543,22 @@ nav {
 .loading-ellipsis { display: inline-flex; gap: 8px; margin-top: 6px; }
 .loading-ellipsis span {
   width: 8px; height: 8px; border-radius: 50%;
-  background: var(--primary-color); opacity: 0.6;
+  background: linear-gradient(100.84deg, #EEC2F8, #FFC4C8); opacity: 0.6;
   animation: dotBlink 1.2s ease-in-out infinite;
 }
 .loading-ellipsis span:nth-child(2) { animation-delay: 0.2s; }
 .loading-ellipsis span:nth-child(3) { animation-delay: 0.4s; }
 @keyframes dotBlink { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 
-.loading-desc { margin-top: 12px; text-align: center; color: var(--primary-color); }
+.loading-desc { margin-top: 12px; text-align: center; color: rgba(17, 17, 17, 0.9); }
 .loading-subtitle { font-size: 16px; opacity: 0.9; }
 .loading-estimate { font-size: 14px; opacity: 0.85; margin-top: 4px; }
-.loading-note { font-size: 13px; opacity: 0.85; margin-top: 4px; color: var(--primary-color); }
+.loading-note { font-size: 13px; opacity: 0.85; margin-top: 4px; color: rgba(17, 17, 17, 0.9); }
 
 .preview-controls {
     display: flex;
     gap: 10px;
-    margin-top: 12px;
+    margin-top: 8px;
     margin-bottom: 15px;
     flex-wrap: wrap;
     width: 100%;
@@ -491,11 +572,21 @@ nav {
 
 /* Footer */
 footer {
-    background-color: var(--surface-color);
-    padding: 20px 0;
+    position: relative;
+    padding: 0;
     text-align: center;
     margin-top: 60px;
     border-top: 1px solid var(--light-gray);
+}
+/* 背景蒙层使用伪元素覆盖，适配不同高度与宽度 */
+footer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(208, 171, 205, 0.17);
+  backdrop-filter: blur(2px);
+  z-index: 0;
+  pointer-events: none; /* 避免遮挡交互 */
 }
 footer .container {
   display: flex;
@@ -573,6 +664,112 @@ footer .footer-links svg.icon {
   fill: currentColor;
 }
 
+/* ===== Figma 261:151 设计还原覆盖（不改动逻辑，仅样式） ===== */
+:root {
+  --background-color: #F4F7FF;
+  --surface-color: #FFFFFF;
+  --text-color: #111111;
+  --secondary-color: #667085;
+  --light-gray: #EFE6F6;
+  --radius-section: 27px;
+  --radius-card: 20px;
+  --radius-button: 50px;
+ --page-bg-image: url('../assets/images/bg-home.png');
+}
+
+body {
+  background-color: var(--background-color) !important;
+  background-image: var(--page-bg-image) !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-position: center top !important;
+  background-attachment: fixed !important;
+  color: var(--text-color) !important;
+  font-family: 'PingFang SC', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+/* 保持默认头部样式（回退模糊与边框） */
+
+.hero {
+  background: transparent !important;
+  color: var(--text-color) !important;
+  animation: none !important;
+  background-image: none !important;
+  padding-top: 0 !important; /* 清除默认 60px 顶部内边距 */
+}
+.hero h1 {
+  color: #111111 !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  background: none !important;
+  filter: none !important;
+}
+.hero p { color: #8C8C8C !important; }
+.hero .cta-breathe {
+  position: relative !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 249px !important;
+  height: 80px !important;
+  padding: 0 20px !important;
+  margin: 16px auto 0 !important;
+  border-radius: 50px !important;
+  background: linear-gradient(100.84deg, #EEC2F8 12.79%, #FFC4C8 80.62%) !important;
+  box-shadow: none !important;
+  border: none !important;
+  color: rgba(17, 17, 17, 0.9) !important;
+  text-transform: capitalize !important;
+  font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 28px !important;
+  line-height: 80px !important;
+  text-align: center !important;
+}
+
+.upload-area, .preview-area {
+  background-color: rgba(255,255,255,0.8) !important;
+  border: none !important; /* 默认不显示外框边线 */
+  backdrop-filter: blur(5px) !important; /* 贴近设计的 5px 模糊 */
+  border-radius: 27px !important;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.12) !important;
+}
+
+.upload-box {
+  border: 2px dashed rgba(0,0,0,0.12) !important;
+  border-radius: var(--radius-card) !important;
+  background: rgba(0,0,0,0.05) !important;
+  color: rgba(0,0,0,0.6) !important;
+}
+/* 仅右侧预览外卡片显示白色边框 */
+.preview-area { border: 4px solid #FFFFFF !important; }
+/* 使预览区成为定位上下文，便于将操作按钮固定在右上角 */
+.preview-area { position: relative; }
+
+/* 预览内框（内容容器）按规格设置 */
+.preview-container {
+  background: rgba(0,0,0,0.05) !important; /* #0000000D */
+  border-radius: 20px !important;
+}
+/* 回退预览区控制位置与样式到默认 */
+
+/* 回退标题装饰符号 */
+.preview-placeholder p {
+  color: rgba(0,0,0,0.6) !important;
+}
+
+/* 导航登录胶囊在浅色主题下更显眼 */
+#login-link {
+  border: 1px solid #FFFFFF !important;
+  background: rgba(255,255,255,0.5) !important;
+  color: rgba(17,17,17,0.9) !important;
+}
+#login-link:hover {
+  border-color: #FFFFFF !important;
+  background: rgba(255,255,255,0.6) !important;
+  color: rgba(17,17,17,0.9) !important;
+}
+
 /* Notification */
 .notification {
     position: fixed;
@@ -623,12 +820,11 @@ footer .footer-links svg.icon {
 @media (max-width: 992px) {
     .converter-container {
         flex-direction: column;
-    
+    }
   .hero {
     background-position: 50% 48%, 8% 36%, 92% 40%, center, 0 0, 0 0, center;
     background-size: 200% 200%, 160% 160%, 160% 160%, cover, 22px 22px, 22px 22px, cover;
   }
-}
     .upload-box, .preview-container {
         min-height: 280px; /* 移动端降低高度更轻盈 */
     }
@@ -646,10 +842,90 @@ footer .footer-links svg.icon {
     }
 }
 
+/* Desktop sizing based on Figma (keep responsive behavior) */
+@media (min-width: 1200px) {
+  /* 左侧上传卡片固定视觉尺寸，右侧预览自适应填充 */
+  .converter-container { align-items: flex-start; }
+  .upload-area {
+    width: 380px;
+    height: 640px;     /* 与右侧预览区域保持等高 */
+    flex: none;        /* 防止在桌面端被拉伸 */
+    display: flex;     /* 垂直堆叠内部元素，更好控制间距 */
+    flex-direction: column;
+    padding-bottom: 36px; /* 底部留白：36px */
+  }
+  /* 内部虚线拖拽框贴近设计尺寸并居中 */
+  .upload-box {
+    width: 332px;
+    height: 458px;
+    margin: 16px auto; /* 收紧竖向间距以避免累计高度溢出 */
+  }
+  /* 浏览按钮与容器宽度与内框一致，避免贴边 */
+  .upload-browse, .upload-generate { max-width: 332px; }
+  .btn.btn-primary.browse-btn, .btn.btn-primary.generate-btn {
+    width: 100%;
+    max-width: 332px;
+    height: 60px;
+  }
+  /* 右侧 3D 预览卡片按规格固定尺寸并不缩放 */
+  .preview-area {
+    width: 816px;
+    height: 640px;
+    flex-shrink: 0;
+  }
+  .preview-container {
+    width: 768px;
+    height: 542px;
+    flex-shrink: 0;
+    margin: 0 auto; /* 内框居中放置 */
+  }
+}
+
+/* Converter title (icon + text) hidden when using banner image */
+.converter-title { display: none; }
+
+/* Converter banner image replaces title */
+.converter-banner {
+  width: 488px;
+  height: 60px;
+  margin: 0 0 12px;
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+.converter-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* 展示原图比例，避免裁剪文字 */
+  object-position: left center; /* 靠左对齐 */
+  display: block;
+}
+
+.converter-icon { display: none; }
+.converter-icon img, .converter-icon svg { display: none; }
+
+.converter-heading { display: none; }
+
+@media (max-width: 992px) {
+  .converter-banner { width: auto; height: 48px; }
+  .converter-banner img { height: 48px; }
+}
+
+/* Mobile refinements */
+@media (max-width: 768px) {
+  nav { padding: 12px 16px; }
+  .nav-links a { font-size: 15px; }
+  .nav-links #login-link { padding: 6px 12px; border-radius: 8px; }
+  .hero .cta-breathe { padding: 12px 22px; }
+  .converter-section { padding: 48px 0; }
+  .upload-area, .preview-area { padding: 20px; }
+  .upload-box, .preview-container { min-height: 260px; }
+}
+
 /* Gallery styles */
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(282px, 1fr));
   gap: 16px;
 }
 
@@ -687,29 +963,37 @@ footer .footer-links svg.icon {
 }
 
 .gallery-item {
-  background: var(--surface-color);
-  border: 1px solid #2b3442;
-  border-radius: 10px;
+  position: relative;
+  width: 100%;
+  height: 404px;
+  background: #FFFFFF;
+  border-radius: 20px;
+  backdrop-filter: blur(5px);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-  display: flex;
-  flex-direction: column;
 }
 
 .gallery-item img {
   width: 100%;
   height: 280px;
   object-fit: cover;
-  background: #0f131a;
+  background: transparent;
 }
 
 /* 内嵌 3D 组件尺寸与外观 */
-.gallery-item model-viewer {
-  --poster-color: #0f131a;
-
+.gallery-thumb {
+  position: absolute;
+  left: 0;
+  top: 0;
   width: 100%;
-  height: 280px;
-  background: #0f131a !important; /* 覆盖 JS 中的白色背景 */
+  height: 286px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.gallery-item model-viewer {
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
   display: block;
 }
 
@@ -717,23 +1001,86 @@ footer .footer-links svg.icon {
 .gallery-item canvas {
   width: 100%;
   height: 160px;
-  background: #0f131a;
+  background: transparent;
   border-radius: 0; /* 保持与图片一致的直角顶部，下方由卡片圆角处理 */
   box-shadow: none;
 }
 
 .gallery-title {
-  padding: 8px 12px;
-  font-weight: 600;
-  color: var(--text-color);
+  position: absolute;
+  left: 11px;
+  top: 310px;
+  width: 128px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  font-family: 'Lexend', system-ui, -apple-system, Segoe UI, sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 20px;
+  text-transform: capitalize;
+  color: #000000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .gallery-actions {
+  position: absolute;
+  left: 12px;
+  top: 348px;
+  width: 210px;
+  height: 44px;
   display: flex;
-  gap: 12px;
-  padding: 12px;
-  margin-top: auto;
+  justify-content: center;
   align-items: center;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+.gallery-item .btn-download-glb {
+  width: 210px;
+  height: 44px;
+}
+
+.gallery-item .like-btn {
+  position: absolute;
+  left: 234px;
+  top: 356px;
+  width: 28px;
+  height: 28px;
+  z-index: 2;
+}
+
+/* 下载按钮：按提供的规范定制 */
+.btn-download-glb {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;
+  gap: 10px;
+  width: 210px;
+  height: 44px;
+  background: linear-gradient(0deg, rgba(0,0,0,0.1), rgba(0,0,0,0.1)), #EEC3F7;
+  border-radius: 20px;
+  border: none;
+  color: #111111;
+  font-family: 'Lexend', system-ui, -apple-system, Segoe UI, sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 44px;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.btn-download-glb:hover {
+  filter: brightness(0.98);
+}
+
+.btn-download-glb:active {
+  filter: brightness(0.95);
 }
 
 /* 预览错误提示 */
@@ -834,7 +1181,7 @@ footer .footer-links svg.icon {
 
   background: var(--surface-color);
   padding: 16px;
-  border-radius: 10px;
+  border-radius: var(--radius-card, 10px);
   max-width: 900px;
   width: 90%;
   position: relative;
@@ -850,10 +1197,10 @@ footer .footer-links svg.icon {
 }
 /* Logo tune: bigger size with rounded corners and shadow */
 .logo img {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  width: 35px;
+  height: 35px;
+  border-radius: 0;
+  box-shadow: none;
   object-fit: cover;
 }
 /* Breathing CTA animation */
@@ -872,8 +1219,28 @@ footer .footer-links svg.icon {
   position: relative;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+  border-radius: 20px;
+  box-shadow: var(--shadow-card, 0 6px 18px rgba(0,0,0,0.22));
+}
+
+/* Navigation login pill styling to match Figma */
+.nav-links #login-link {
+  padding: 0 14px;
+  min-width: 114px;
+  height: 46px;
+  border: 1px solid #FFFFFF;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.5);
+}
+.nav-links #login-link:hover {
+  border-color: #FFFFFF;
+  background: rgba(255,255,255,0.6);
+}
+
+/* Hero CTA pill and size alignment */
+.hero .cta-breathe {
+  border-radius: var(--radius-button, 50px);
+  padding: 14px 26px;
 }
 .preview-container::before {
   content: "";
@@ -889,7 +1256,7 @@ footer .footer-links svg.icon {
   position: absolute; inset: 0;
   pointer-events: none;
   box-shadow: inset 0 0 30px rgba(138,180,255,0.25), inset 0 0 60px rgba(179,136,255,0.18);
-  border-radius: 12px;
+  border-radius: 20px;
 }
 @keyframes gridDrift {
   0% { background-position: 0 0; }
@@ -897,8 +1264,58 @@ footer .footer-links svg.icon {
 }
 /* Footer layout overrides to match reference design */
 footer .container {
+  position: relative;
   align-items: flex-start;
   text-align: left;
+  height: 100px; /* 参考宽屏设计高度 */
+  z-index: 1; /* 保证内容在蒙层之上 */
+}
+.footer-frame { position: relative; width: 100%; height: 100%; }
+.footer-copyright,
+.footer-email,
+.footer-privacy,
+.footer-terms,
+.footer-phone {
+  position: absolute;
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, system-ui, sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 20px; /* 缩小行高以保证在 100px 内不溢出 */
+  display: flex;
+  align-items: center;
+  color: rgba(17, 17, 17, 0.5);
+}
+.footer-copyright { width: 194px; left: 110px; top: 12px; text-transform: capitalize; }
+.footer-email { width: 125px; left: 110px; top: 32px; }
+.footer-phone { width: 120px; left: 260px; top: 32px; }
+.footer-privacy { width: 102px; left: 110px; top: 52px; text-transform: capitalize; }
+.footer-terms { width: 102px; left: 110px; top: 72px; text-transform: capitalize; }
+
+/* 桌面端隐藏电话以贴近参考布局，仅保留邮箱 */
+@media (min-width: 1200px) {
+  .footer-phone { display: inline-flex !important; }
+  footer { height: 100px; }
+  /* 桌面端容器宽度按 1440 对齐设计 */
+  footer .container { max-width: 1440px; }
+}
+
+/* 小屏仍采用原来的流式布局，避免绝对定位导致拥挤 */
+@media (max-width: 1199px) {
+  footer { padding: 20px 0; }
+  footer .container { height: auto; }
+  .footer-frame { position: static; }
+  .footer-copyright,
+  .footer-email,
+  .footer-privacy,
+  .footer-terms,
+  .footer-phone {
+    position: static;
+    line-height: 1.6;
+    display: inline-flex;
+    margin-right: 12px;
+  }
+  .footer-list { display: flex; flex-direction: row; gap: 12px; }
 }
 footer .company-title {
   color: var(--white);
@@ -935,6 +1352,48 @@ footer .footer-list a:hover {
 
 .preview-controls .btn-primary:disabled { opacity: 0.65; }
 
+/* 预览右上角图标按钮容器 */
+#preview-controls.preview-controls {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+/* 图标按钮样式（44x44，黑底白字，圆角 10） */
+.icon-btn {
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  background: #111111;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.18);
+}
+.icon-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.icon-btn:hover:not(:disabled) { filter: brightness(1.1); }
+.icon-btn svg { display: block; }
+/* 无障碍隐藏文本 */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+
 .hero:hover {
   animation-duration: 10s;
 }
@@ -942,4 +1401,121 @@ footer .footer-list a:hover {
 @media (prefers-reduced-motion: reduce) {
   .hero { animation: none; }
   .hero::before, .hero::after { animation: none; }
+}
+.upload-area {
+    /* removed glass card overrides */
+}
+
+/* removed upload-title overrides */
+/* removed placeholder layout overrides */
+
+/* removed upload icon overrides */
+
+/* removed extra hint typography overrides */
+
+/* removed */
+
+/* removed */
+
+/* removed */
+
+/* removed generate button overrides */
+
+/* removed responsive overrides for upload area */
+/* Upload buttons unified style (Browse + Generate) */
+.btn.btn-primary.browse-btn, .btn.btn-primary.generate-btn {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;
+  gap: 8px;
+  width: 100%;
+  max-width: 334px;
+  height: 60px;
+  background: #111111;
+  border-radius: 20px;
+  color: #FFFFFF;
+  font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 25px;
+  line-height: 60px; /* 与按钮高度一致，确保文字不贴底 */
+  text-transform: capitalize;
+  cursor: pointer;
+  border: none;
+}
+.btn.btn-primary.browse-btn:hover, .btn.btn-primary.generate-btn:hover { filter: brightness(1.1); }
+.btn.btn-primary.browse-btn:active, .btn.btn-primary.generate-btn:active { transform: translateY(1px); }
+
+.browse-icon, .sparkle-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  visibility: visible;
+}
+.browse-icon svg, .sparkle-icon svg { width: 100%; height: 100%; display: block; transform: translateY(2px); }
+/* Only adjust Generate button icon further by 1px */
+#generate-button .browse-icon svg, #generate-button .sparkle-icon svg { transform: translateY(5px); }
+.browse-icon .union-icon, .sparkle-icon .union-icon { display: block; width: 42px; height: 42px; }
+.btn.btn-primary.browse-btn .btn-text, .btn.btn-primary.generate-btn .btn-text {
+  display: inline-flex;
+  align-items: center;
+  color: #FFFFFF;
+  padding: 0; /* 清除通用 .btn-text 的额外内边距，避免上下偏差 */
+  margin: 0;
+  line-height: 1; /* 文本本身紧凑，依赖父容器 Flex 垂直居中 */
+}
+
+/* Generate 图标与 Browse 保持一致尺寸与对齐 */
+/* merged with .browse-icon rules above */
+
+@media (max-width: 992px) {
+  .btn.btn-primary.browse-btn, .btn.btn-primary.generate-btn { width: 100%; max-width: 334px; }
+  .upload-browse, .upload-generate { padding: 0 16px; margin-bottom: 36px; }
+  .upload-area { padding-bottom: 36px; }
+}
+/* Placement for browse button below inner dropzone */
+.upload-browse {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 332px;
+  margin: 16px auto 36px; /* 统一底部留白为 36px */
+}
+/* 上传成功后显示的 Generate 按钮（卡片底部，外于虚线框） */
+.upload-generate { width: 100%; max-width: 332px; margin: 16px auto 36px; display: none; }
+.upload-area.has-image .upload-generate { display: block; }
+.upload-area.has-image .upload-browse { display: none; }
+/* Generate button uses the same style block as Browse via .generate-btn */
+/* 强制关闭 ::before，以确保使用内部 SVG 图标 */
+#generate-button::before { content: none !important; }
+/* 上传区域标题贴近 Figma：PingFang + 黑色 */
+.upload-area > h3 {
+  font-family: 'PingFang SC', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  color: #000000;
+  margin: 4px 0 12px;
+}
+
+/* 占位内容垂直居中并微调间距 */
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+}
+.preview-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
 }

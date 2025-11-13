@@ -43,7 +43,7 @@
         actions.className = 'gallery-actions';
 
         var downloadBtn = document.createElement('button');
-        downloadBtn.className = 'btn btn-primary';
+        downloadBtn.className = 'btn btn-download-glb';
         downloadBtn.textContent = 'Download GLB';
         downloadBtn.onclick = function(){
           var a = document.createElement('a');

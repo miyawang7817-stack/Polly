@@ -26,7 +26,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
     def _set_cors(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key, x-auth-token, x-vercel-protection-bypass')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, x-api-key, x-auth-token, x-vercel-protection-bypass')
 
     def do_GET(self):
         # Health check endpoint for webview/preview pings
@@ -86,10 +86,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
         except Exception:
             ctx = None
         try:
+            # Add a reasonable timeout to avoid hanging connections
+            timeout_sec = float(os.environ.get('DEV_PROXY_UPSTREAM_TIMEOUT', '60'))
             if ctx is not None:
-                resp_ctx = urlopen(req, context=ctx)
+                resp_ctx = urlopen(req, context=ctx, timeout=timeout_sec)
             else:
-                resp_ctx = urlopen(req)
+                resp_ctx = urlopen(req, timeout=timeout_sec)
             with resp_ctx as resp:
                 status = resp.getcode()
                 data = resp.read()
@@ -99,7 +101,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 self._set_cors()
                 self.send_header('Content-Type', ct)
                 self.end_headers()
-                self.wfile.write(data)
+                try:
+                    self.wfile.write(data)
+                except (BrokenPipeError, ConnectionResetError):
+                    # Client closed connection; ignore gracefully
+                    pass
         except HTTPError as e:
             # Relay upstream error text
             err_text = e.read().decode('utf-8', errors='ignore')
@@ -107,13 +113,19 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self._set_cors()
             self.send_header('Content-Type', 'text/plain; charset=utf-8')
             self.end_headers()
-            self.wfile.write((f'Upstream {e.code} {e.reason} at {target_url} - ' + err_text).encode('utf-8'))
+            try:
+                self.wfile.write((f'Upstream {e.code} {e.reason} at {target_url} - ' + err_text).encode('utf-8'))
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         except URLError as e:
             self.send_response(502)
             self._set_cors()
             self.send_header('Content-Type', 'text/plain; charset=utf-8')
             self.end_headers()
-            self.wfile.write((f'Bad Gateway - {e.reason}').encode('utf-8'))
+            try:
+                self.wfile.write((f'Bad Gateway - {e.reason}').encode('utf-8'))
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
 
 def run():

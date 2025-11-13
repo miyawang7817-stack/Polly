@@ -21,6 +21,49 @@
 # Proxy API to backend to avoid browser mixed content & CORS
 [[redirects]]
   from = "/generate"
-  to = "http://111.229.71.58:8086/generate"
+  to = "https://111.229.71.58:8086/generate"
+  status = 200
+  force = true
+
+# Login & auth endpoints (proxy to backend)
+[[redirects]]
+  from = "/login"
+  to = "https://111.229.71.58:8086/login"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/request-email-code"
+  to = "https://111.229.71.58:8086/request-email-code"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/login-email-code"
+  to = "https://111.229.71.58:8086/login-email-code"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/request-sms-code"
+  to = "https://111.229.71.58:8086/request-sms-code"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/login-sms-code"
+  to = "https://111.229.71.58:8086/login-sms-code"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/oauth/google/start"
+  to = "https://111.229.71.58:8086/oauth/google/start"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/oauth/apple/start"
+  to = "https://111.229.71.58:8086/oauth/apple/start"
   status = 200
   force = true

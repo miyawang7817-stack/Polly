@@ -156,8 +156,9 @@ function open3DModal(glbPath) {
   mv.setAttribute('reveal', 'auto');
   mv.style.width = '100%';
   mv.style.height = '70vh';
-  mv.style.background = '#0f131a';
-  mv.style.setProperty('--poster-color', '#0f131a');
+  // 未加载前不使用黑色，改为透明以适配浅色卡片
+  mv.style.background = 'transparent';
+  mv.style.setProperty('--poster-color', 'transparent');
   mv.style.setProperty('--progress-mask', 'none');
   modal3DContainer.appendChild(mv);
 
@@ -269,7 +270,10 @@ async function renderGallery() {
     const card = document.createElement('div');
     card.className = 'gallery-item';
 
-    // 在卡片内嵌入 3D 预览（model-viewer）
+    // 在卡片内嵌入 3D 预览（model-viewer），置于 .gallery-thumb 容器内
+    const thumb = document.createElement('div');
+    thumb.className = 'gallery-thumb';
+
     const mv = document.createElement('model-viewer');
     mv.setAttribute('src', item.glb);
     mv.setAttribute('camera-controls', '');
@@ -278,10 +282,10 @@ async function renderGallery() {
     mv.setAttribute('interaction-prompt-threshold', '0');
     mv.setAttribute('reveal', 'auto');
     mv.style.width = '100%';
-    mv.style.height = '280px';
-    mv.style.background = '#0f131a';
-    mv.style.setProperty('--poster-color', '#0f131a');
+    mv.style.height = '100%';
+    mv.style.background = 'transparent';
     mv.style.setProperty('--progress-mask', 'none');
+    thumb.appendChild(mv);
 
     const title = document.createElement('div');
     title.className = 'gallery-title';
@@ -291,8 +295,9 @@ async function renderGallery() {
     actions.className = 'gallery-actions';
 
     const downloadGlbBtn = document.createElement('button');
-    downloadGlbBtn.className = 'btn btn-primary';
-    downloadGlbBtn.textContent = 'Download GLB';
+    downloadGlbBtn.className = 'btn btn-download-glb';
+    // 使用不间断空格，避免在固定宽度下断行造成“乱码”效果
+    downloadGlbBtn.textContent = 'Download\u00A0GLB';
     downloadGlbBtn.onclick = () => downloadFile(item.glb);
 
     // Like (heart) toggle (SVG keeps size constant)
@@ -314,7 +319,8 @@ async function renderGallery() {
     };
 
     actions.appendChild(downloadGlbBtn);
-    actions.appendChild(likeBtn);
+    // 点赞按钮定位到卡片根节点，避免被 .gallery-actions 的定位上下文影响
+    card.appendChild(likeBtn);
 
     // 移除 poster，避免 Chrome 下白色信箱空区
 
@@ -324,7 +330,7 @@ async function renderGallery() {
     errorHint.textContent = '模型未就绪或文件损坏';
     errorHint.style.display = 'none';
     mv.addEventListener('error', () => { errorHint.style.display = 'block'; });
-    card.appendChild(mv);
+    card.appendChild(thumb);
     card.appendChild(errorHint);
     card.appendChild(title);
     card.appendChild(actions);

@@ -1,0 +1,17 @@
+{
+  "colors": {
+    "primary": "#10b981",
+    "secondary": "#94a3b8",
+    "background": "#0a0f14",
+    "surface": "#111827",
+    "text": "#e5edf4",
+    "lightGray": "#1f2a37"
+  },
+  "radii": {
+    "button": "18px",
+    "card": "14px"
+  },
+  "shadows": {
+    "card": "0 8px 22px rgba(0,0,0,0.26)"
+  }
+}

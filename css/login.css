@@ -1,0 +1,124 @@
+/* Login Modal (Figma-styled) */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 1000;
+}
+.login-card {
+  width: 440px;
+  max-width: 92vw;
+  border-radius: 24px;
+  background: #ffffff;
+  color: #111111;
+  box-shadow: 0 24px 60px rgba(17, 17, 17, 0.22);
+  padding: 24px;
+}
+.login-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-title {
+  font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  color: #111111;
+}
+.login-close {
+  position: absolute;
+  right: 0;
+  top: 0;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: #60646c;
+}
+.login-section { margin-top: 20px; }
+.login-actions { display: flex; flex-direction: column; gap: 14px; }
+.login-btn {
+  width: 100%;
+  height: 52px;
+  border-radius: 999px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  cursor: pointer;
+}
+.login-btn.figma-cta {
+  height: 48px;
+  border-radius: 30px;
+  padding: 14px 16px;
+  background: #EEC2F71A; /* 10% alpha per request */
+  border: 2px solid rgba(238, 194, 247, 0.4);
+  font-family: 'Montserrat', 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 17px;
+}
+.login-btn.figma-cta span:first-child {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.login-btn.figma-cta .gradient-label {
+  background: radial-gradient(60.96% 28.15% at 70.54% 91.27%, rgba(133, 100, 37, 0.2) 0%, rgba(185, 158, 90, 0) 100%), radial-gradient(47.28% 21.83% at 25.69% 21.83%, rgba(25, 51, 145, 0.2) 0%, rgba(255, 135, 135, 0) 100%), radial-gradient(43.43% 20.06% at 107.01% 7.04%, rgba(176, 74, 185, 0.3) 0%, rgba(183, 113, 4, 0) 100%), #0D0D1A;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+/* Apply the same gradient to icon when needed */
+.login-btn.figma-cta .gradient-icon {
+  background: radial-gradient(60.96% 28.15% at 70.54% 91.27%, rgba(133, 100, 37, 0.2) 0%, rgba(185, 158, 90, 0) 100%), radial-gradient(47.28% 21.83% at 25.69% 21.83%, rgba(25, 51, 145, 0.2) 0%, rgba(255, 135, 135, 0) 100%), radial-gradient(43.43% 20.06% at 107.01% 7.04%, rgba(176, 74, 185, 0.3) 0%, rgba(183, 113, 4, 0) 100%), #0D0D1A;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.login-btn.primary { background: #111111; color: #ffffff; }
+.login-btn.neutral { background: #F3F4F6; color: #111111; }
+.login-divider { margin: 6px 0 2px; height: 1px; background: #E6E8EB; }
+.login-disclaimer {
+  margin-top: 12px;
+  font-size: 12px;
+  text-align: center;
+  color: #6b7280;
+}
+.login-disclaimer a { color: #6b7280; text-decoration: underline; }
+.login-section .login-btn { margin-bottom: 10px; }
+.login-section .login-btn:last-of-type { margin-bottom: 0; }
+.login-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+.login-tabs .tab { flex: 1; height: 44px; border-radius: 999px; }
+.login-back { border: none; background: transparent; color: #60646c; cursor: pointer; }
+.login-form { display: none; flex-direction: column; gap: 10px; }
+.login-row { display: flex; gap: 8px; }
+.login-input, .login-select {
+  flex: 1;
+  height: 44px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid #E2E8F0;
+  background: #F9FAFB;
+  color: #111111;
+}
+.login-select { flex: 0 0 140px; padding: 8px 10px; }
+.login-submit { width: 100%; height: 48px; border-radius: 999px; }
+.login-error { margin-top: 8px; color: #d32f2f; font-size: 12px; }
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
