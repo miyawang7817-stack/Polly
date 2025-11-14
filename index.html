@@ -381,6 +381,21 @@
           if (saved) bannerImg.src = saved;
         } catch(_) {}
 
+        // If the banner image fails to load, gracefully fallback to a text title
+        function showTextFallback() {
+          try { localStorage.removeItem('POLLY_BANNER_PNG_DATAURL'); } catch(_) {}
+          bannerImg.style.display = 'none';
+          banner.style.display = 'none';
+          const heading = document.createElement('h2');
+          heading.className = 'converter-title';
+          heading.textContent = 'Image to 3D Converter';
+          heading.style.display = 'block';
+          // Insert after original banner container
+          const parent = banner.parentNode;
+          if (parent) parent.insertBefore(heading, banner.nextSibling);
+        }
+        bannerImg.addEventListener('error', showTextFallback);
+
         // Drag & Drop PNG onto the banner area to preview immediately
         banner.addEventListener('dragover', (e) => { e.preventDefault(); });
         banner.addEventListener('drop', (e) => {
