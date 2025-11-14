@@ -5,6 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Terms of Use - Polly 3D</title>
   <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    /* 页底背景改为体验图，与 FAQ 保持一致 */
+    footer::before {
+      background: url('assets/images/tab2-bg.png') center / cover no-repeat !important;
+      backdrop-filter: none !important;
+      opacity: 1 !important;
+    }
+    /* 页面整体背景与 FAQ 一致 */
+    body {
+      background-color: #F4F7FF !important;
+      background-image: url('assets/images/tab2-bg.png') !important;
+      background-repeat: no-repeat !important;
+      background-position: center top !important;
+      background-size: cover !important;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -68,14 +84,16 @@
 
   <footer>
     <div class="container">
-      <p>&copy; 2023 Polly. All rights reserved.</p>
-      <div class="footer-links contact-row">
-        <a href="mailto:support@polly3d.com" aria-label="Email support@polly3d.com">support@polly3d.com</a>
-        <a href="tel:8888888888" aria-label="Phone 888-888-8888">888-888-8888</a>
-      </div>
-      <div class="footer-list">
-        <a href="privacy.html">Privacy Policy</a>
-        <a href="terms.html">Terms of Use</a>
+      <div class="footer-frame">
+        <p class="footer-copyright">&copy; 2023 Polly. All rights reserved.</p>
+        <div class="footer-links contact-row">
+          <a class="footer-email" href="mailto:support@polly3d.com" aria-label="Email support@polly3d.com">support@polly3d.com</a>
+          <a class="footer-phone" href="tel:8888888888" aria-label="Phone 888-888-8888">888-888-8888</a>
+        </div>
+        <div class="footer-list">
+          <a class="footer-privacy" href="privacy.html">Privacy Policy</a>
+          <a class="footer-terms" href="terms.html">Terms of Use</a>
+        </div>
       </div>
     </div>
   </footer>
