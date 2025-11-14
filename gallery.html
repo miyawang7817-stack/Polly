@@ -11,16 +11,10 @@
     <style>
       /* Basic gallery-specific overrides if needed */
       /* 顶部导航与内容的拥挤感优化（仅 Gallery 页作用） */
-      header nav {
-        /* 与 Home 保持一致的左右内边距，避免视觉上“撑到边缘” */
-        padding: clamp(10px, 2.4vw, 16px) 24px;
-      }
-      .nav-links {
-        gap: clamp(8px, 2.2vw, 18px);
-      }
-      .nav-links a {
-        padding: 6px 10px;
-      }
+      /* 取消页面内联的导航内边距覆盖，统一使用全局样式 */
+      /* header nav { padding: clamp(10px, 2.4vw, 16px) 24px; } */
+      /* 统一使用全局样式中的固定间距（避免页面切换造成差异） */
+      /* .nav-links { gap: 40px; } // 不再在页面内覆盖 */
 
       /* Gallery 标题与正文间距与自适应字号 */
       .converter-section {
