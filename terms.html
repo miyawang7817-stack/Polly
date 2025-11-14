@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Terms of Use - Polly 3D</title>
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/login.css" />
   <style>
     /* 页底背景改为体验图，与 FAQ 保持一致 */
     footer::before {
@@ -33,6 +34,7 @@
         <li><a href="index.html">Home</a></li>
         <li><a href="gallery.html">Gallery</a></li>
         <li><a href="faq.html">FAQ</a></li>
+        <li><a id="login-link" href="#">Login</a></li>
       </ul>
     </nav>
   </header>
@@ -97,5 +99,145 @@
       </div>
     </div>
   </footer>
+  
+  <!-- Login Modal (Figma-styled) -->
+  <div id="login-modal" class="login-overlay">
+    <div class="login-card">
+      <div class="login-header">
+        <span class="login-title">Sign In</span>
+        <button id="login-close" aria-label="Close" class="login-close">×</button>
+      </div>
+      <!-- Step 1: method selection -->
+      <div id="login-step-select" class="login-section" style="display:block;">
+        <button id="select-email-or-phone" class="login-btn neutral figma-cta">
+          <span>✉️</span>
+          <span class="gradient-label">Continue with Email/Phone</span>
+        </button>
+        <button id="select-apple" class="login-btn neutral figma-cta">
+          <span class="gradient-icon"></span>
+          <span class="gradient-label">Continue with AppleID</span>
+        </button>
+        <button id="select-google" class="login-btn neutral figma-cta">
+          <span class="gradient-icon">G</span>
+          <span class="gradient-label">Continue with Google</span>
+        </button>
+        <div class="login-disclaimer">I agree to the <a href="terms.html">Terms of Use</a> and <a href="privacy.html">Privacy Policy</a></div>
+      </div>
+      <!-- Step 2: forms -->
+      <div id="login-step-forms" class="login-section" style="display:none;">
+        <div class="login-row" style="margin-bottom:10px;">
+          <button id="login-back" class="login-back">←</button>
+          <div style="flex:1"></div>
+        </div>
+        <div class="login-tabs">
+          <button id="tab-sms-otp" class="login-btn neutral tab">Phone</button>
+          <button id="tab-email-otp" class="login-btn neutral tab">Email</button>
+        </div>
+        <!-- SMS OTP Login -->
+        <div id="login-form-sms-otp" class="login-form" style="display:flex;">
+          <div class="login-row">
+            <select id="sms-country" class="login-select">
+              <option value="+886">TW +886</option>
+              <option value="+86">CN +86</option>
+              <option value="+852">HK +852</option>
+              <option value="+81">JP +81</option>
+              <option value="+1">US +1</option>
+            </select>
+            <input id="sms-otp-phone" type="tel" placeholder="Phone number" class="login-input" />
+          </div>
+          <div class="login-row">
+            <input id="sms-otp-code" type="text" placeholder="Verification code" class="login-input" />
+            <button id="sms-otp-send" class="login-btn neutral" style="flex:0 0 140px;">Send</button>
+          </div>
+          <button id="sms-otp-login" class="login-btn primary login-submit" disabled>Continue</button>
+        </div>
+        <!-- Email OTP Login -->
+        <div id="login-form-email-otp" class="login-form">
+          <input id="email-otp-email" type="email" placeholder="Email" class="login-input" />
+          <div class="login-row">
+            <input id="email-otp-code" type="text" placeholder="Verification code" class="login-input" />
+            <button id="email-otp-send" class="login-btn neutral" style="flex:0 0 140px;">Send</button>
+          </div>
+          <button id="email-otp-login" class="login-btn primary login-submit" disabled>Continue</button>
+        </div>
+        <div class="login-disclaimer">I agree to the <a href="terms.html">Terms of Use</a> and <a href="privacy.html">Privacy Policy</a></div>
+      </div>
+      <div id="login-error" class="login-error" style="display:none;">Sign in failed, please try again.</div>
+    </div>
+  </div>
+
+  <!-- Apple Sign-In Web SDK -->
+  <script src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+  <script>
+    (function(){
+      try {
+        window.POLLY_AUTH_BASE = "https://sh-prd-llm.xverse.cn/yunjing/yunjing-proxy/";
+      } catch(_){ }
+    })();
+  </script>
+  <script>
+    (function(){
+      const loginLink = document.getElementById('login-link');
+      const loginModal = document.getElementById('login-modal');
+      const loginClose = document.getElementById('login-close');
+      // 点击背景关闭
+      if (loginModal) {
+        loginModal.addEventListener('click', function(e){ if (e.target === loginModal) { loginModal.style.display = 'none'; } });
+      }
+      const loginStepSelect = document.getElementById('login-step-select');
+      const loginStepForms = document.getElementById('login-step-forms');
+      const loginBack = document.getElementById('login-back');
+      const tabEmailOtp = document.getElementById('tab-email-otp');
+      const tabSmsOtp = document.getElementById('tab-sms-otp');
+      const formEmailOtp = document.getElementById('login-form-email-otp');
+      const formSmsOtp = document.getElementById('login-form-sms-otp');
+      const selectApple = document.getElementById('select-apple');
+      function showSelect(){ if(loginStepSelect && loginStepForms){ loginStepSelect.style.display='block'; loginStepForms.style.display='none'; } }
+      function showForms(){ if(loginStepSelect && loginStepForms){ loginStepSelect.style.display='none'; loginStepForms.style.display='block'; } }
+      function showTab(name){ if(formEmailOtp && formSmsOtp){ formEmailOtp.style.display = (name==='email-otp') ? 'flex' : 'none'; formSmsOtp.style.display = (name==='sms-otp') ? 'flex' : 'none'; } }
+      function openModal(){ if(loginModal){ loginModal.style.display='flex'; showSelect(); } }
+      function closeModal(){ if(loginModal){ loginModal.style.display='none'; } }
+      loginLink && loginLink.addEventListener('click', function(e){ e.preventDefault(); openModal(); });
+      loginClose && loginClose.addEventListener('click', closeModal);
+      loginBack && loginBack.addEventListener('click', showSelect);
+      tabEmailOtp && tabEmailOtp.addEventListener('click', function(){ showTab('email-otp'); });
+      tabSmsOtp && tabSmsOtp.addEventListener('click', function(){ showTab('sms-otp'); });
+      const selectEmailOrPhone = document.getElementById('select-email-or-phone');
+      selectEmailOrPhone && selectEmailOrPhone.addEventListener('click', function(){ showForms(); showTab('sms-otp'); });
+      // Apple 登录：优先调用官方 SDK，失败时回退到后端重定向
+      function loginWithApple(){
+        const base = (function(){
+          try {
+            var b = window.POLLY_AUTH_BASE || '';
+            if (b) {
+              if (!/\/$/.test(b)) b += '/';
+              return b + 'oauth/apple/start';
+            }
+          } catch(_){ }
+          return (window.POLLY_API && typeof window.POLLY_API.url === 'function') ? window.POLLY_API.url('oauth/apple/start') : '/oauth/apple/start';
+        })();
+        const redirectUri = window.location.origin + '/';
+        const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
+        try {
+          if (window.AppleID && AppleID.auth && typeof AppleID.auth.signIn === 'function' && window.POLLY_APPLE_CLIENT_ID && window.POLLY_APPLE_REDIRECT_URI) {
+            AppleID.auth.init({
+              clientId: window.POLLY_APPLE_CLIENT_ID,
+              scope: window.POLLY_APPLE_SCOPE || 'name email',
+              redirectURI: window.POLLY_APPLE_REDIRECT_URI,
+              state: window.POLLY_APPLE_STATE || '',
+              nonce: window.POLLY_APPLE_NONCE || '',
+              usePopup: true
+            });
+            AppleID.auth.signIn().catch(function(){ window.location.href = url; });
+          } else {
+            window.location.href = url;
+          }
+        } catch (_) {
+          window.location.href = url;
+        }
+      }
+      selectApple && selectApple.addEventListener('click', loginWithApple);
+    })();
+  </script>
 </body>
 </html>
