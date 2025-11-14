@@ -375,10 +375,17 @@
         const bannerImg = banner ? banner.querySelector('img') : null;
         if (!banner || !bannerImg) return;
 
-        // Persisted banner from previous selection
+        // Persisted banner only in debug mode; otherwise enforce default file
+        const params = new URLSearchParams(location.search);
+        const debugMode = params.get('debug') === '1';
         try {
-          const saved = localStorage.getItem('POLLY_BANNER_PNG_DATAURL');
-          if (saved) bannerImg.src = saved;
+          const saved = debugMode ? localStorage.getItem('POLLY_BANNER_PNG_DATAURL') : null;
+          if (saved) {
+            bannerImg.src = saved;
+          } else if (!debugMode) {
+            try { localStorage.removeItem('POLLY_BANNER_PNG_DATAURL'); } catch(_) {}
+            bannerImg.src = 'assets/images/converter-title.png';
+          }
         } catch(_) {}
 
         // If the banner image fails to load, gracefully fallback to a text title
@@ -412,8 +419,6 @@
         });
 
         // If URL has ?debug=1, show a small upload control in the debug panel
-        const params = new URLSearchParams(location.search);
-        const debugMode = params.get('debug') === '1';
         const debugPanel = document.getElementById('debug-panel');
         if (debugMode && debugPanel) {
           const input = document.createElement('input');
