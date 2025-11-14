@@ -334,28 +334,29 @@ async function waitForGlobals(keys, timeoutMs = 10000) {
   }
 }
 
-// Initialize the application
+// Lazy boot: only load Three.js addons and init scene when needed
+async function bootThreeIfNeeded() {
+  if (renderer) return true;
+  await ensureThreeAddonsLoaded();
+  const ready = await waitForGlobals(['THREE', 'OrbitControls', 'GLTFLoader']);
+  if (!ready) {
+    showNotification('Three.js modules failed to load. Please check network.', 'error');
+    return false;
+  }
+  initThreeJS();
+  return true;
+}
+
+// Initialize the application (no heavy libs on first paint)
 async function initApp() {
-    // Load Three.js addons first to avoid constructor errors
-    await ensureThreeAddonsLoaded();
-    const ready = await waitForGlobals(['THREE', 'OrbitControls', 'GLTFLoader']);
-    if (!ready) {
-      showNotification('Three.js modules failed to load. Please check CSP and network.', 'error');
-      return;
-    }
-    // Initialize Three.js scene
-    initThreeJS();
     // Default preview state when no model has been generated
     setPreviewState('default');
     // Initialize auth from localStorage
     setAuthHeaderFromStorage();
     // Capture tokens returned via OAuth redirects in URL
     captureTokenFromUrl();
-    // Gate generate button until logged in
-    // Temporarily allow generation without login
-    if (generateButton) {
-      generateButton.disabled = false;
-    }
+    // Allow generation immediately
+    if (generateButton) { generateButton.disabled = false; }
     if (generateBtnText) generateBtnText.textContent = 'Generate';
   }
 
@@ -511,7 +512,7 @@ function removeBackground() {
 }
 
 // 3D Model Generation
-function generate3DModel() {
+async function generate3DModel() {
     if (!uploadedImage.src) {
         showNotification('Please upload an image first.', 'error');
         return;
@@ -543,6 +544,15 @@ function generate3DModel() {
       maxDim = 640; quality = 0.55;
       compressedDataUrl = compressImageToDataURL(uploadedImage, maxDim, quality, true);
       base64Len = compressedDataUrl.length;
+    }
+
+    // Ensure 3D libs are ready for any preview work
+    const booted = await bootThreeIfNeeded();
+    if (!booted) {
+      generateButton.disabled = false;
+      if (generateBtnText) generateBtnText.textContent = 'Generate';
+      setPreviewState('default');
+      return;
     }
 
     // Mock mode: skip network, load a local sample GLB to verify frontend
@@ -799,6 +809,15 @@ function generate3DModel() {
         })
         .catch(err => {
           if (timeoutId) clearTimeout(timeoutId);
+          const isAbort = (err && err.name === 'AbortError');
+          if (isAbort) {
+            console.warn('Async generate aborted');
+            setPreviewState('default');
+            generateButton.disabled = false;
+            if (generateBtnText) generateBtnText.textContent = 'Generate';
+            updateDebugPanel(err);
+            return;
+          }
           console.error('Async flow error:', err);
           setPreviewState('default');
           generateButton.disabled = false;
@@ -844,6 +863,15 @@ function generate3DModel() {
       })
       .catch(err => {
         if (timeoutId) clearTimeout(timeoutId);
+        const isAbort = (err && err.name === 'AbortError');
+        if (isAbort) {
+          console.warn('Generate request aborted');
+          setPreviewState('default');
+          generateButton.disabled = false;
+          if (generateBtnText) generateBtnText.textContent = 'Generate';
+          updateDebugPanel(err);
+          return;
+        }
         console.error('Error generating 3D model:', err);
         setPreviewState('default');
         generateButton.disabled = false;

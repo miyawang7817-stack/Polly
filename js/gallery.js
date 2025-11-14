@@ -7,6 +7,8 @@ const modal3DContainer = document.getElementById('modal-3d-container');
 const modalDownloadGlbBtn = document.getElementById('modal-download-glb');
 const modalDownloadSnapshotBtn = document.getElementById('modal-download-snapshot');
 
+ // 直接依赖页面中的 model-viewer 脚本，取消按需导入
+
 function isThreeAvailable() {
   return typeof window.THREE !== 'undefined' && !!window.GLTFLoader && !!window.OrbitControls;
 }
@@ -32,12 +34,36 @@ const GLB_PATHS = [
 const GLB_ROOT_PATHS = GLB_PATHS.map(p => p.startsWith('/') ? p : '/' + p);
 
 function titleFromPath(p){
-  const name = (p || '').split('/').pop() || p;
-  const base = name.replace(/\.(glb|crdownload)$/i,'');
-  const m = base.match(/(\d+)/);
-  const num = m ? m[1] : '';
-  const suffix = /\.crdownload$/i.test(name) ? ' (未完成)' : '';
-  return num ? `Inspiration ${num}${suffix}` : `${base}${suffix}`;
+  const name = (p || '').split('/').pop() || '';
+  let base = name.replace(/\.(glb|crdownload)$/i,'');
+  // 清理压缩后缀与重复副本标记
+  base = base.replace(/-draco$/i, '');
+  base = base.replace(/\s*\(\d+\)\s*$/,'');
+  // 特例：UUID 模型命名为 Helmet
+  if (/^775e1869-a572-425d-b570-1b5c889e85f7$/i.test(base)) return 'Helmet';
+  // inspiration-N → 使用用户自定义映射或默认格式
+  const insp = base.match(/^inspiration-(\d+)$/i);
+  if (insp) {
+    const num = insp[1];
+    const titleMap = {
+      '1': 'LABUBU',
+      '2': 'Motorcycle',
+      '3': 'Ninja Turtle',
+      '4': 'Off-Road Vehicle',
+      '5': 'Vending Machine',
+      '6': 'Landscape',
+      '7': 'Caveman',
+      '8': 'Robot',
+      '9': 'General',
+      '10': 'Monster',
+      '11': 'Clock Tower',
+      '12': 'Little Girl',
+    };
+    return titleMap[num] || `Inspiration ${num}`;
+  }
+  // 通用：kebab/snake 转 Title Case
+  const words = base.split(/[-_]+/).filter(Boolean).map(s => s.charAt(0).toUpperCase() + s.slice(1));
+  return words.join(' ') || base;
 }
 
 function categoryFromPath(p){
@@ -67,6 +93,11 @@ let lastFilteredItems = [];
 let currentModalIndex = -1;
 let io; // IntersectionObserver for infinite scroll
 let isAutoLoading = false;
+// 预览懒加载：并发控制与视口观察器
+let previewIO;
+const mvLoadQueue = [];
+let mvLoadingCount = 0;
+const mvMaxConcurrent = 2; // 同时加载的模型数量，避免高并发卡顿
 
 function makeLighting(scene) {
   scene.background = new THREE.Color(0xffffff);
@@ -145,24 +176,21 @@ function open3DModal(glbPath) {
   if (!modalEl || !modal3DContainer) return;
   modalEl.style.display = 'block';
   modal3DContainer.innerHTML = '';
-
-  // Use model-viewer to preview (CSP-friendly)
+  // 直接创建 model-viewer
   const mv = document.createElement('model-viewer');
   mv.setAttribute('src', glbPath);
   mv.setAttribute('camera-controls', '');
   mv.setAttribute('shadow-intensity', '0');
   mv.setAttribute('exposure', '1.0');
-  // Auto reveal
   mv.setAttribute('reveal', 'auto');
   mv.style.width = '100%';
   mv.style.height = '70vh';
-  // 未加载前不使用黑色，改为透明以适配浅色卡片
   mv.style.background = 'transparent';
   mv.style.setProperty('--poster-color', 'transparent');
   mv.style.setProperty('--progress-mask', 'none');
   modal3DContainer.appendChild(mv);
 
-  // Error handling: show message when GLB fails to load
+  // 错误提示
   const errorHint = document.createElement('div');
   errorHint.style.display = 'none';
   errorHint.style.marginTop = '8px';
@@ -171,12 +199,8 @@ function open3DModal(glbPath) {
   errorHint.textContent = 'Model failed to load. Check GLB path or file integrity.';
   modal3DContainer.appendChild(errorHint);
 
-  mv.addEventListener('error', () => {
-    errorHint.style.display = 'block';
-  });
-  mv.addEventListener('load', () => {
-    errorHint.style.display = 'none';
-  });
+  mv.addEventListener('error', () => { errorHint.style.display = 'block'; });
+  mv.addEventListener('load', () => { errorHint.style.display = 'none'; });
 
   // Download: GLB enabled; snapshot disabled under strict CSP
   if (modalDownloadGlbBtn) {
@@ -243,20 +267,57 @@ function drawPlaceholderCanvas(canvasEl, title) {
     const h = canvasEl.height || 160;
     const ctx = canvasEl.getContext('2d');
     if (!ctx) return;
-    const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(1, '#f3f5f7');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = '#4a6cf7';
-    ctx.font = 'bold 16px system-ui, -apple-system, Segoe UI, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(title || 'GLB 预览', w / 2, h / 2 - 8);
-    ctx.fillStyle = '#6c757d';
-    ctx.font = '12px system-ui, -apple-system, Segoe UI, sans-serif';
-    ctx.fillText('点击预览加载 3D', w / 2, h / 2 + 16);
+    // 留空透明画布，不显示任何占位文本或背景
+    ctx.clearRect(0, 0, w, h);
   } catch (_) {
     // ignore
+  }
+}
+
+// 观察卡片进入视口后再触发模型加载（非点击）
+function observePreview(mv) {
+  if (!mv) return;
+  // 不支持 IntersectionObserver 时直接加载
+  if (!('IntersectionObserver' in window)) {
+    mv.setAttribute('src', mv.dataset.src || mv.getAttribute('data-src'));
+    return;
+  }
+  if (!previewIO) {
+    previewIO = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const el = entry.target;
+        // 已设置 src 的跳过
+        if (el.getAttribute('src')) {
+          previewIO.unobserve(el);
+          continue;
+        }
+        if (entry.isIntersecting) {
+          // 入队，遵守并发限制
+          mvLoadQueue.push(el);
+          processMvQueue();
+          previewIO.unobserve(el);
+        }
+      }
+    }, { rootMargin: '200px 0px', threshold: 0.2 });
+  }
+  previewIO.observe(mv);
+}
+
+function processMvQueue() {
+  while (mvLoadingCount < mvMaxConcurrent && mvLoadQueue.length) {
+    const el = mvLoadQueue.shift();
+    // Double-check，避免重复设置
+    if (el.getAttribute('src')) continue;
+    const src = el.dataset.src || el.getAttribute('data-src');
+    if (!src) continue;
+    mvLoadingCount++;
+    el.setAttribute('src', src);
+    const done = () => {
+      mvLoadingCount = Math.max(0, mvLoadingCount - 1);
+      processMvQueue();
+    };
+    el.addEventListener('load', done, { once: true });
+    el.addEventListener('error', done, { once: true });
   }
 }
 
@@ -269,27 +330,43 @@ async function renderGallery() {
   for (const item of items) {
     const card = document.createElement('div');
     card.className = 'gallery-item';
-
-    // 在卡片内嵌入 3D 预览（model-viewer），置于 .gallery-thumb 容器内
+    // 直接在卡片内使用 model-viewer 预览
     const thumb = document.createElement('div');
     thumb.className = 'gallery-thumb';
-
     const mv = document.createElement('model-viewer');
-    mv.setAttribute('src', item.glb);
+    // 直接使用 src 立即加载，回到最初行为
+    mv.src = item.glb;
     mv.setAttribute('camera-controls', '');
     mv.setAttribute('shadow-intensity', '0');
     mv.setAttribute('exposure', '1.0');
-    mv.setAttribute('interaction-prompt-threshold', '0');
     mv.setAttribute('reveal', 'auto');
+    mv.setAttribute('poster', makePlaceholderDataURL(item.title));
     mv.style.width = '100%';
     mv.style.height = '100%';
     mv.style.background = 'transparent';
+    mv.style.setProperty('--poster-color', 'transparent');
     mv.style.setProperty('--progress-mask', 'none');
     thumb.appendChild(mv);
+    // 移除视口懒加载观察，恢复直接加载
+
+    // 卡片内错误提示
+    const errorHint = document.createElement('div');
+    errorHint.style.display = 'none';
+    errorHint.style.marginTop = '6px';
+    errorHint.style.color = '#d32f2f';
+    errorHint.style.font = '12px system-ui, -apple-system, Segoe UI, sans-serif';
+    errorHint.textContent = '预览加载失败';
+    thumb.appendChild(errorHint);
+    mv.addEventListener('error', () => { errorHint.style.display = 'block'; });
+    mv.addEventListener('load', () => { 
+      errorHint.style.display = 'none';
+      title.style.display = '';
+    });
 
     const title = document.createElement('div');
     title.className = 'gallery-title';
     title.textContent = item.title;
+    title.style.display = 'none';
 
     const actions = document.createElement('div');
     actions.className = 'gallery-actions';
@@ -318,20 +395,14 @@ async function renderGallery() {
       likeBtn.classList.toggle('liked', now);
     };
 
+    // 移除预览按钮，恢复直接卡片预览
     actions.appendChild(downloadGlbBtn);
     // 点赞按钮定位到卡片根节点，避免被 .gallery-actions 的定位上下文影响
     card.appendChild(likeBtn);
 
     // 移除 poster，避免 Chrome 下白色信箱空区
 
-    // 错误提示：当 GLB 不可用（如 .crdownload）时显示
-    const errorHint = document.createElement('div');
-    errorHint.className = 'gallery-error';
-    errorHint.textContent = '模型未就绪或文件损坏';
-    errorHint.style.display = 'none';
-    mv.addEventListener('error', () => { errorHint.style.display = 'block'; });
     card.appendChild(thumb);
-    card.appendChild(errorHint);
     card.appendChild(title);
     card.appendChild(actions);
     // 立即绘制本地 2D 占位缩略图，确保不空白
@@ -346,18 +417,8 @@ function makePlaceholderDataURL(title, w = 256, h = 160) {
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, w, h);
-  grad.addColorStop(0, '#ffffff');
-  grad.addColorStop(1, '#f3f5f7');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#4a6cf7';
-  ctx.font = 'bold 16px system-ui, -apple-system, Segoe UI, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(title || 'GLB 预览', w / 2, h / 2 - 8);
-  ctx.fillStyle = '#6c757d';
-  ctx.font = '12px system-ui, -apple-system, Segoe UI, sans-serif';
-  ctx.fillText('Click to preview 3D', w / 2, h / 2 + 16);
+  // 返回完全透明的占位 PNG，不显示任何文字或背景
+  ctx.clearRect(0, 0, w, h);
   return canvas.toDataURL('image/png');
 }
 

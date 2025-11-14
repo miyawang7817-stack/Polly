@@ -18,17 +18,8 @@
           var c = document.createElement('canvas');
           c.width = 256; c.height = 160;
           var ctx = c.getContext('2d');
-          var grad = ctx.createLinearGradient(0,0,256,160);
-          grad.addColorStop(0,'#ffffff');
-          grad.addColorStop(1,'#f3f5f7');
-          ctx.fillStyle = grad; ctx.fillRect(0,0,256,160);
-          ctx.fillStyle = '#4a6cf7';
-          ctx.font = 'bold 16px system-ui, -apple-system, Segoe UI, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(t, 128, 72);
-          ctx.fillStyle = '#6c757d';
-          ctx.font = '12px system-ui, -apple-system, Segoe UI, sans-serif';
-          ctx.fillText('Click to preview 3D', 128, 96);
+          // 留空透明占位图，不绘制任何文字或背景
+          ctx.clearRect(0, 0, 256, 160);
           img.src = c.toDataURL('image/png');
         } catch(e) {
           img.alt = t;

@@ -2,39 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Optional: set direct HTTPS backend via meta tag (can also use URL ?apiBase=...) -->
-    <meta name="polly-api-base" content="">
+    <!-- Dev: route API to local proxy to avoid same-origin /generate on static server -->
+    <meta name="polly-api-base" content="http://localhost:8787/">
+    <meta name="polly-fallback-api-base" content="https://polly-3d.vercel.app/api/">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Polly</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/login.css">
-    <!-- Optional: Figma tokens configuration (uncomment to use) -->
-    <!--
-      <script>
-        // Point to your hosted tokens JSON exported from Figma
-        // window.FIGMA_TOKENS_URL = 'https://your.cdn/path/to/tokens.json';
-      </script>
-    -->
-    <!-- Import map to resolve bare specifier 'three' used by JSM modules -->
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.module.js"
-        }
-      }
-    </script>
-    <!-- Three.js Libraries (CSP-safe ES modules) -->
-    <script type="module">
-      import * as THREE from 'three';
-      import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.132.2/examples/jsm/controls/OrbitControls.js';
-      import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.132.2/examples/jsm/loaders/GLTFLoader.js';
-      // Expose to global for existing non-module code
-      window.THREE = THREE;
-      window.OrbitControls = OrbitControls;
-      window.GLTFLoader = GLTFLoader;
-    </script>
+    <!-- Performance: preconnect for CDN/API, defer non-critical scripts -->
+    <link rel="preconnect" href="https://cdn.skypack.dev" crossorigin>
+    <link rel="dns-prefetch" href="//cdn.skypack.dev">
+    <link rel="preconnect" href="https://polly-3d.vercel.app" crossorigin>
     <!-- Design tokens loader: applies Figma-exported tokens to CSS variables -->
-    <script src="js/figma_tokens.js"></script>
+    <script src="js/figma_tokens.js" defer></script>
 </head>
   <body>
     <!-- Debug Panel: visible when URL has ?debug=1 -->
@@ -72,7 +52,7 @@
         <div class="container">
             <div class="converter-banner" aria-label="Image to 3D Converter banner">
               <!-- 请将你的 PNG 拷贝到 assets/images/ 并命名为 converter-title.png -->
-              <img src="assets/images/converter-title.png?v=4568398" alt="Converter Title Banner" />
+              <img src="assets/images/converter-title.png?v=4568398" alt="Converter Title Banner" loading="lazy" decoding="async" />
             </div>
             <div class="converter-container">
                 <div class="upload-area">
@@ -293,56 +273,48 @@
 
     <!-- Local dev: route API to dev proxy to avoid POST 501 on static server -->
     <!-- Print Modal -->
-    <div id="print-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-      <div style="background:#141820; color:#fff; border-radius:16px; padding:24px; width:520px; box-shadow:0 12px 32px rgba(0,0,0,0.35);">
-        <div style="position:relative; display:flex; align-items:center; justify-content:center;">
-          <span style="font-weight:700; font-size:20px;">Print 3D Model</span>
-          <button id="print-close" aria-label="Close" style="position:absolute; right:0; top:0; border:none; background:transparent; font-size:22px; line-height:1; cursor:pointer; color:#fff">×</button>
+    <div id="print-modal" class="modal print-overlay" style="display:none;">
+      <div class="print-card">
+        <button id="print-close" aria-label="Close" class="print-close">×</button>
+        <div class="print-header">
+          <span class="print-icon">✦</span>
+          <span class="print-title">Print 3D Model</span>
         </div>
-        <p style="margin-top:8px; color:#9aa0a6;">Please fill in shipping information. Each print costs USD $100.</p>
-        <form id="print-form" style="margin-top:16px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-          <div style="grid-column:1 / span 2;">
-            <label for="print-name" style="display:block; margin-bottom:6px;">Contact Name *</label>
-            <input id="print-name" type="text" placeholder="Full Name" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
+        <p class="print-subtitle">Please fill in shipping information. Each print costs USD $100.</p>
+        <form id="print-form" class="print-grid">
+          <label for="print-name" class="print-label col-span-2">Contact Name *</label>
+          <input id="print-name" type="text" placeholder="Full Name" class="print-input col-span-2" />
+
+          <label for="print-phone" class="print-label">Phone *</label>
+          <input id="print-phone" type="tel" placeholder="+1 545 123 8439" class="print-input" />
+
+          <label for="print-email" class="print-label">Email</label>
+          <input id="print-email" type="email" placeholder="name@mail.com" class="print-input" />
+
+          <label for="print-address1" class="print-label col-span-2">Address Line 1 *</label>
+          <input id="print-address1" type="text" placeholder="Street, Building" class="print-input col-span-2" />
+
+          <label for="print-address2" class="print-label col-span-2">Address Line 2</label>
+          <input id="print-address2" type="text" placeholder="Street, Building" class="print-input col-span-2" />
+
+          <label for="print-city" class="print-label">City *</label>
+          <input id="print-city" type="text" placeholder="City" class="print-input" />
+
+          <label for="print-state" class="print-label">State / Province *</label>
+          <input id="print-state" type="text" placeholder="State or Province" class="print-input" />
+
+          <label for="print-postal" class="print-label">Postal Code *</label>
+          <input id="print-postal" type="text" placeholder="ZIP / Postal" class="print-input" />
+
+          <label for="print-country" class="print-label">Country*</label>
+          <input id="print-country" type="text" placeholder="Country" class="print-input" />
+
+          <div class="print-actions col-span-2">
+            <button id="print-submit" class="print-cta">Pay & Print ($100)</button>
+            <button id="print-cancel" class="print-cancel" type="button">Cancel</button>
           </div>
-          <div>
-            <label for="print-phone" style="display:block; margin-bottom:6px;">Phone *</label>
-            <input id="print-phone" type="tel" placeholder="+1 555 123 4567" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
-          </div>
-          <div>
-            <label for="print-email" style="display:block; margin-bottom:6px;">Email</label>
-            <input id="print-email" type="email" placeholder="name@example.com" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
-          </div>
-          <div style="grid-column:1 / span 2;">
-            <label for="print-address1" style="display:block; margin-bottom:6px;">Address Line 1 *</label>
-            <input id="print-address1" type="text" placeholder="Street, Building" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
-          </div>
-          <div style="grid-column:1 / span 2;">
-            <label for="print-address2" style="display:block; margin-bottom:6px;">Address Line 2</label>
-            <input id="print-address2" type="text" placeholder="Apartment, Suite" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
-          </div>
-          <div>
-            <label for="print-city" style="display:block; margin-bottom:6px;">City *</label>
-            <input id="print-city" type="text" placeholder="City" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
-          </div>
-          <div>
-            <label for="print-state" style="display:block; margin-bottom:6px;">State / Province *</label>
-            <input id="print-state" type="text" placeholder="State or Province" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
-          </div>
-          <div>
-            <label for="print-postal" style="display:block; margin-bottom:6px;">Postal Code *</label>
-            <input id="print-postal" type="text" placeholder="ZIP / Postal" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
-          </div>
-          <div>
-            <label for="print-country" style="display:block; margin-bottom:6px;">Country *</label>
-            <input id="print-country" type="text" placeholder="Country" style="width:100%; padding:10px; border-radius:8px; border:1px solid #2a2f3b; background:#0f1320; color:#fff;"/>
-          </div>
+          <p id="print-error" class="print-error" style="display:none;">Error</p>
         </form>
-        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
-          <button id="print-cancel" class="btn" style="background:#2a2f3b; color:#fff; padding:10px 16px; border-radius:8px; border:none;">Cancel</button>
-          <button id="print-submit" class="btn btn-primary" style="padding:10px 16px; border-radius:8px; border:none;">Pay & Print ($100)</button>
-        </div>
-        <p id="print-error" style="display:none; margin-top:10px; color:#ff6b6b;">Error</p>
       </div>
     </div>
     <script>
@@ -356,8 +328,6 @@
         } catch(_) {}
       })();
     </script>
-    <!-- Apple Sign-In Web SDK -->
-    <script src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
     <script>
       (function(){
         try {
@@ -366,8 +336,8 @@
         } catch(_){ }
       })();
     </script>
-    <script src="js/config.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/config.js" defer></script>
+    <script src="js/main.js" defer></script>
     <!-- Banner: force official PNG and provide error fallback only -->
     <script>
       (function() {
