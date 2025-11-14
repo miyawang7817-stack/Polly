@@ -1263,11 +1263,18 @@ body {
   100% { background-position: 200px 120px; }
 }
 /* Footer layout overrides to match reference design */
+/* Footer 响应式间距与布局变量 */
+footer {
+  --footer-base-left: 110px;
+  --footer-base-top: clamp(8px, 1.2vw, 12px);
+  --footer-gap: clamp(16px, 2vw, 20px);
+  --footer-height: calc(var(--footer-base-top) + 3 * var(--footer-gap) + 20px);
+}
 footer .container {
   position: relative;
   align-items: flex-start;
   text-align: left;
-  height: 100px; /* 参考宽屏设计高度 */
+  height: var(--footer-height);
   z-index: 1; /* 保证内容在蒙层之上 */
 }
 .footer-frame { position: relative; width: 100%; height: 100%; }
@@ -1281,23 +1288,33 @@ footer .container {
   font-style: normal;
   font-weight: 400;
   font-size: 12px;
-  line-height: 20px; /* 缩小行高以保证在 100px 内不溢出 */
+  line-height: 20px;
   display: flex;
   align-items: center;
   color: rgba(17, 17, 17, 0.5);
 }
-.footer-copyright { width: 194px; left: 110px; top: 12px; text-transform: capitalize; }
-.footer-email { width: 125px; left: 110px; top: 32px; }
-.footer-phone { width: 120px; left: 260px; top: 32px; }
-.footer-privacy { width: 102px; left: 110px; top: 52px; text-transform: capitalize; }
-.footer-terms { width: 102px; left: 110px; top: 72px; text-transform: capitalize; }
+.footer-copyright { width: 194px; left: var(--footer-base-left); top: var(--footer-base-top); text-transform: capitalize; }
+.footer-email { width: 125px; left: var(--footer-base-left); top: calc(var(--footer-base-top) + var(--footer-gap)); }
+.footer-phone { width: 120px; left: calc(var(--footer-base-left) + 150px); top: calc(var(--footer-base-top) + var(--footer-gap)); }
+.footer-privacy { width: 102px; left: var(--footer-base-left); top: calc(var(--footer-base-top) + 2 * var(--footer-gap)); text-transform: capitalize; }
+.footer-terms { width: 102px; left: var(--footer-base-left); top: calc(var(--footer-base-top) + 3 * var(--footer-gap)); text-transform: capitalize; }
 
-/* 桌面端隐藏电话以贴近参考布局，仅保留邮箱 */
+/* 桌面端容器宽度按 1440 对齐设计 */
 @media (min-width: 1200px) {
   .footer-phone { display: inline-flex !important; }
-  footer { height: 100px; }
-  /* 桌面端容器宽度按 1440 对齐设计 */
   footer .container { max-width: 1440px; }
+}
+
+/* 小屏流式布局，保持一致的上下间距并避免拥挤 */
+@media (max-width: 1199px) {
+  footer .container { height: auto; align-items: center; }
+  .footer-frame { position: static; width: 100%; height: auto; }
+  .footer-copyright,
+  .footer-email,
+  .footer-phone,
+  .footer-privacy,
+  .footer-terms { position: static; margin: clamp(4px, 1.2vw, 8px) 0; }
+  .footer-links, .footer-list { gap: clamp(8px, 2vw, 12px); margin-top: clamp(6px, 1.6vw, 10px); }
 }
 
 /* 小屏仍采用原来的流式布局，避免绝对定位导致拥挤 */
