@@ -1,0 +1,55 @@
+/* My Assets component styles based on provided spec */
+.my-assets-component {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 20px;
+  gap: 8px;
+  width: 200px;
+  height: 50px;
+  /* Allow absolute children to position relative to component if needed */
+  position: relative;
+  /* prevent flex grow when inside other flex containers */
+  flex: none;
+}
+
+.my-assets-component .frame {
+  width: 20px;
+  height: 20px;
+  opacity: 0.8;
+  position: relative;
+  flex: none;
+}
+
+.my-assets-component .vector {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 10%;
+  bottom: 10%;
+  background: #000000;
+  border: 0.2px solid #000000;
+}
+
+.my-assets-component .label {
+  width: 68px;
+  height: 20px;
+  font-family: 'SF Pro Text', -apple-system, system-ui, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px; /* identical to box height, or ~143% of 14px */
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #000000;
+  opacity: 0.8;
+  flex: none;
+}
+
+/* Optional: provide a dark-mode friendly inversion when parent has dark background */
+.dark .my-assets-component .label,
+body[style*="background"] .my-assets-component .label {
+  /* keep requested spec color; adjust only if needed */
+  color: #000000;
+}

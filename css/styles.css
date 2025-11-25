@@ -122,6 +122,7 @@ nav {
     align-items: center;
     height: 80px;
     padding: 0 24px;
+    overflow: visible; /* 允许绝对定位的弹窗超出导航容器 */
 }
 
 .logo {
@@ -157,7 +158,7 @@ nav {
     align-items: center;
 }
 
-.nav-links a {
+.nav-links > li > a {
     font-family: 'Lexend', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     display: flex;
     align-items: center;
@@ -182,18 +183,18 @@ nav {
 @media (max-width: 560px) {
   /* 移动端也保持固定吸顶 */
   header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; }
-  nav { padding: 0 12px; overflow-x: hidden; height: 80px; align-items: center; }
+  nav { padding: 0 12px; overflow: visible; height: 80px; align-items: center; }
   .nav-links { flex-wrap: nowrap; gap: 40px; justify-content: flex-end; }
-  .nav-links a { height: 80px; font-size: 16px; }
+  .nav-links > li > a { height: 80px; font-size: 16px; }
   /* 移动端背景不使用 fixed，避免在部分设备导致滚动异常 */
   body { background-attachment: scroll !important; }
 }
 
 /* 桌面窄屏（≤1100px）也允许导航换行并减小间距，避免横向溢出 */
 @media (max-width: 1100px) {
-  nav { padding: 0 16px; height: 80px; align-items: center; }
+  nav { padding: 0 16px; height: 80px; align-items: center; overflow: visible; }
   .nav-links { flex-wrap: nowrap; gap: 40px; justify-content: flex-end; }
-  .nav-links a { height: 80px; font-size: 18px; }
+  .nav-links > li > a { height: 80px; font-size: 18px; }
 }
 
 /* 登录按钮胶囊样式（桌面） */
@@ -215,6 +216,102 @@ nav {
   color: rgba(17, 17, 17, 0.9);
   border-color: #FFFFFF;
   background: rgba(255, 255, 255, 0.6);
+}
+
+/* User avatar button and popover */
+.avatar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid #FFFFFF;
+  background: rgba(255,255,255,0.8);
+  padding: 0;
+  cursor: pointer;
+}
+.avatar-btn img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.avatar-btn:hover { background: rgba(255,255,255,0.9); }
+
+.user-popover {
+  position: absolute;
+  top: 56px;
+  right: 0;
+  width: 220px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(17,17,17,0.18);
+  border: 1px solid rgba(238, 194, 247, 0.35);
+  padding: 10px 8px;
+  z-index: 1000;
+}
+.user-popover.is-floating {
+  position: fixed;
+  top: 84px; /* header 80 + 4px 间距 */
+  right: 24px; /* 与 nav 右侧对齐的安全边距 */
+}
+.user-popover .popover-item {
+  /* 强制覆盖导航内 a 的默认样式，避免高度与字体被污染 */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: #111111;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 20px; /* 与 My Assets 保持一致的文本行高 */
+  font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  box-sizing: border-box;
+}
+.user-popover .popover-item:hover { background: rgba(17,17,17,0.04); }
+.popover-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: #111111;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 20px;
+  font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  box-sizing: border-box;
+}
+.popover-item:hover { background: rgba(238, 194, 247, 0.12); }
+.popover-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  flex: 0 0 20px; /* 固定 flex 占位，保证与文字间距一致 */
+  font-size: 16px;
+  line-height: 1; /* 收紧行高，减少垂直空白 */
+}
+.popover-text {
+  flex: 1;
+  display: inline-flex;
+  align-items: center; /* 与图标垂直居中对齐 */
+  min-height: 20px;
+  line-height: 20px; /* 与 My Assets 文本文字保持一致 */
 }
 
 .nav-links a:hover { color: rgba(17, 17, 17, 0.9); }

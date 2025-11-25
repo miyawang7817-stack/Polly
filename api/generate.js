@@ -35,17 +35,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Read incoming JSON body (contains base64 image and face_count)
-    const bodyStr = await new Promise((resolve, reject) => {
-      let data = '';
-      req.on('data', chunk => { data += chunk; });
-      req.on('end', () => resolve(data));
+    // Read incoming request body with support for JSON and multipart/form-data
+    const reqContentType = String(req.headers['content-type'] || '').trim().toLowerCase();
+    const bodyBuf = await new Promise((resolve, reject) => {
+      const chunks = [];
+      req.on('data', chunk => { chunks.push(chunk); });
+      req.on('end', () => {
+        try { resolve(Buffer.concat(chunks)); } catch (e) { reject(e); }
+      });
       req.on('error', reject);
     });
 
     // Normalize BACKEND_GENERATE_URL to avoid copy-paste artifacts (quotes/backticks/bullets)
-    // Use HTTPS by default to avoid mixed-content in browsers
-    const defaultUrl = 'https://111.229.71.58:8086/generate';
+    // Default to HTTP to avoid TLS/hostname verification issues against raw IPs.
+    // If you have a proper domain + certificate, set BACKEND_GENERATE_URL to https://your.domain/generate
+    const defaultUrl = 'http://111.229.71.58:8086/generate';
     const rawEnv = process.env.BACKEND_GENERATE_URL;
     const normalizeUrl = (val) => {
       if (!val) return '';
@@ -78,8 +82,8 @@ export default async function handler(req, res) {
     }
 
     const headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'model/gltf-binary,application/octet-stream'
+      'Content-Type': reqContentType || 'application/json',
+      'Accept': 'model/gltf-binary,application/octet-stream,application/json'
     };
     // Forward common auth headers from client to upstream if present
     const passThrough = ['authorization', 'x-api-key', 'x-auth-token'];
@@ -118,10 +122,12 @@ export default async function handler(req, res) {
     }
     // Helper to perform upstream fetch
     const doUpstreamFetch = async (url) => {
+      const isJson = reqContentType.includes('application/json');
+      const body = isJson ? (bodyBuf && bodyBuf.length ? bodyBuf.toString('utf8') : '{}') : (bodyBuf || Buffer.from(''));
       const opts = {
         method: 'POST',
         headers,
-        body: bodyStr || '{}',
+        body,
         signal: controller.signal
       };
       if (dispatcher && /^https:\/\//i.test(url)) {
@@ -153,7 +159,7 @@ export default async function handler(req, res) {
           upstreamUrl = httpFallbackUrl;
         } catch (fallbackErr) {
           clearTimeout(timeoutId);
-          const bodyInfo = `request_body_length=${(bodyStr || '').length}`;
+          const bodyInfo = `request_body_length=${(bodyBuf || Buffer.from('')).length}`;
           const composed = [
             `HTTPS fetch error at <${upstreamUrl}>: ${String((fetchErr && fetchErr.message) || fetchErr)}`,
             `HTTP fallback failed at <${httpFallbackUrl}>: ${String((fallbackErr && fallbackErr.message) || fallbackErr)}`,
@@ -172,7 +178,7 @@ export default async function handler(req, res) {
           upstreamUrl = httpsVariant; // mark variant used
         } catch (httpsErr) {
           clearTimeout(timeoutId);
-          const bodyInfo = `request_body_length=${(bodyStr || '').length}`;
+          const bodyInfo = `request_body_length=${(bodyBuf || Buffer.from('')).length}`;
           const nameInfoA = `error_name_primary=${String((fetchErr && fetchErr.name) || '')}`;
           const codeInfoA = `error_code_primary=${String((fetchErr && (fetchErr.code || (fetchErr.cause && fetchErr.cause.code) || (fetchErr.errno))) || '')}`;
           let stackInfoA = '';
@@ -208,7 +214,7 @@ export default async function handler(req, res) {
         clearTimeout(timeoutId);
         const statusCode = isAbort ? 504 : 502;
         const reasonText = isAbort ? `Upstream timeout after ${defaultTimeoutMs}ms` : `Upstream fetch error: ${String(fetchErr && fetchErr.message || fetchErr)}`;
-        const bodyInfo = `request_body_length=${(bodyStr || '').length}`;
+        const bodyInfo = `request_body_length=${(bodyBuf || Buffer.from('')).length}`;
         const nameInfo = `error_name=${String((fetchErr && fetchErr.name) || '')}`;
         const codeInfo = `error_code=${String((fetchErr && (fetchErr.code || (fetchErr.cause && fetchErr.cause.code) || (fetchErr.errno))) || '')}`;
         let stackInfo = '';
@@ -240,7 +246,7 @@ export default async function handler(req, res) {
       try {
         upstreamResp.headers.forEach((v, k) => headerDump.push(`${k}: ${v}`));
       } catch (_) {}
-      const bodyInfo = `request_body_length=${(bodyStr || '').length}`;
+      const bodyInfo = `request_body_length=${(bodyBuf || Buffer.from('')).length}`;
       const composed = [
         `Upstream ${upstreamResp.status} ${upstreamResp.statusText} at <${upstreamUrl}>`,
         bodyInfo,

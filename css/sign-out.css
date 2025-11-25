@@ -1,0 +1,49 @@
+/* Sign out component styles based on provided spec */
+.sign-out-component {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 20px;
+  gap: 8px;
+  width: 200px;
+  height: 50px;
+  position: relative;
+  flex: none;
+  order: 4;
+  flex-grow: 0;
+}
+
+.sign-out-component .frame {
+  width: 20px;
+  height: 20px;
+  opacity: 0.8;
+  position: relative;
+  flex: none;
+}
+
+.sign-out-component .vector {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 10%;
+  bottom: 10%;
+  background: #000000;
+}
+
+.sign-out-component .label {
+  width: 55px;
+  height: 20px;
+  font-family: 'SF Pro Text', -apple-system, system-ui, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #000000;
+  opacity: 0.8;
+  flex: none;
+  order: 1;
+  flex-grow: 0;
+}

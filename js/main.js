@@ -48,6 +48,14 @@ const loginLink = document.getElementById('login-link');
 const loginModal = document.getElementById('login-modal');
 const loginClose = document.getElementById('login-close');
 const loginError = document.getElementById('login-error');
+// User menu elements
+const userMenu = document.getElementById('user-menu');
+const avatarButton = document.getElementById('avatar-button');
+const avatarImage = document.getElementById('avatar-image');
+const userPopover = document.getElementById('user-popover');
+const menuAssets = document.getElementById('menu-assets');
+const menuOrder = document.getElementById('menu-order');
+const menuSignout = document.getElementById('menu-signout');
 // Step containers
 const loginStepSelect = document.getElementById('login-step-select');
 const loginStepForms = document.getElementById('login-step-forms');
@@ -101,6 +109,9 @@ printSubmit && printSubmit.addEventListener('click', submitPrintOrder);
 // Login events
 loginLink && loginLink.addEventListener('click', (e) => { e.preventDefault(); openLoginModal(); });
 loginClose && loginClose.addEventListener('click', closeLoginModal);
+// User menu events
+avatarButton && avatarButton.addEventListener('click', toggleUserPopover);
+menuSignout && menuSignout.addEventListener('click', signOut);
 // Step selection
 selectEmailOrPhone && selectEmailOrPhone.addEventListener('click', () => { showFormsStep(); showLoginTab('sms-otp'); });
 selectApple && selectApple.addEventListener('click', loginWithApple);
@@ -123,6 +134,17 @@ function isAuthenticated() {
     const token = localStorage.getItem('POLLY_AUTH_TOKEN');
     return !!(token && token.length > 0);
   } catch (_) { return false; }
+}
+
+// Require authentication before sensitive actions like uploading
+function requireAuthOrPrompt() {
+  const authed = isAuthenticated();
+  if (!authed) {
+    try { showNotification('Please login to upload photos.', 'warning'); } catch(_) {}
+    openLoginModal && openLoginModal();
+    return false;
+  }
+  return true;
 }
 
 function setAuthHeaderFromStorage() {
@@ -213,6 +235,7 @@ async function loginWithEmailCode(){
     setAuthHeaderFromStorage();
     closeLoginModal();
     showNotification('Signed in successfully', 'success');
+    updateAuthUI();
     if (generateButton) { generateButton.disabled = false; }
     if (generateBtnText) generateBtnText.textContent = 'Generate';
   } catch(e){ setLoginError(e.message || 'Sign-in failed'); }
@@ -263,23 +286,54 @@ async function loginWithSmsCode(){
     setAuthHeaderFromStorage();
     closeLoginModal();
     showNotification('Signed in successfully', 'success');
+    updateAuthUI();
     if (generateButton) { generateButton.disabled = false; }
     if (generateBtnText) generateBtnText.textContent = 'Generate';
   } catch(e){ setLoginError(e.message || 'Sign-in failed'); }
 }
 
 function loginWithGoogle(){
-  const base = (function(path){
-    try {
-      if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
-        return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const forceDirect = (sp.get('forceGoogleDirect') === '1') || !!window.POLLY_GOOGLE_FORCE_DIRECT;
+    const clientId = window.POLLY_GOOGLE_CLIENT_ID || sp.get('googleClientId');
+    const scope = window.POLLY_GOOGLE_SCOPE || 'openid email profile';
+    const responseType = window.POLLY_GOOGLE_RESPONSE_TYPE || 'token id_token';
+    const redirectUri = getGoogleRedirectUri();
+
+    if (forceDirect && clientId) {
+      const endpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
+      const url = new URL(endpoint);
+      url.searchParams.set('client_id', clientId);
+      url.searchParams.set('redirect_uri', redirectUri);
+      url.searchParams.set('response_type', responseType);
+      url.searchParams.set('scope', scope);
+      if ((responseType || '').includes('id_token')) {
+        const givenNonce = sp.get('nonce');
+        const nonce = givenNonce || (Math.random().toString(36).slice(2) + Date.now().toString(36));
+        try { sessionStorage.setItem('POLLY_OAUTH_NONCE', nonce); } catch(_){}
+        url.searchParams.set('nonce', nonce);
       }
-    } catch(_){ }
-    return '/' + path.replace(/^\//,'');
-  })('oauth/google/start');
-  const redirectUri = window.location.origin + '/';
-  const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
-  window.location.href = url;
+      window.location.href = url.toString();
+      return;
+    }
+
+    const base = (function(path){
+      try {
+        if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
+          return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+        }
+      } catch(_){ }
+      return '/' + path.replace(/^\//,'');
+    })('oauth/google/start');
+    const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
+    window.location.href = url;
+  } catch(_) {
+    const base = (window.POLLY_API && typeof window.POLLY_API.url === 'function') ? window.POLLY_API.url('oauth/google/start') : '/oauth/google/start';
+    const redirectUri = getGoogleRedirectUri();
+    const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
+    window.location.href = url;
+  }
 }
 
 function loginWithApple(){
@@ -291,9 +345,30 @@ function loginWithApple(){
     } catch(_){ }
     return '/' + path.replace(/^\//,'');
   })('oauth/apple/start');
-  const redirectUri = window.location.origin + '/';
+  const redirectUri = getGoogleRedirectUri();
   const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
   window.location.href = url;
+}
+
+function getGoogleRedirectUri(){
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const override = window.POLLY_GOOGLE_REDIRECT_URI || sp.get('googleRedirectUri');
+    if (!override) {
+      const metaEl = document.querySelector('meta[name="polly-google-redirect-uri"]');
+      const metaVal = metaEl && metaEl.getAttribute('content');
+      if (metaVal) return metaVal;
+    }
+    if (override) return override;
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      const devPort = String(window.POLLY_GOOGLE_DEV_REDIRECT_PORT || '5500');
+      return `http://${host}:${devPort}/`;
+    }
+    return window.location.origin + '/';
+  } catch(_) {
+    return window.location.origin + '/';
+  }
 }
 
 function setLoginError(msg){
@@ -355,9 +430,18 @@ async function initApp() {
     setAuthHeaderFromStorage();
     // Capture tokens returned via OAuth redirects in URL
     captureTokenFromUrl();
+    // Capture id_token specifically for avatar rendering
+    captureIdTokenFromUrl();
+    // Update nav based on auth state
+    updateAuthUI();
     // Allow generation immediately
     if (generateButton) { generateButton.disabled = false; }
     if (generateBtnText) generateBtnText.textContent = 'Generate';
+    // If on order page, render orders dynamically
+    try {
+      const isOrderPage = document.querySelector('.orders-section');
+      if (isOrderPage) renderOrders();
+    } catch(_) {}
   }
 
 function captureTokenFromUrl(){
@@ -365,16 +449,119 @@ function captureTokenFromUrl(){
     const u = new URL(window.location.href);
     const params = new URLSearchParams(u.search);
     const hashParams = new URLSearchParams(u.hash.replace(/^#/, ''));
-    const token = params.get('token') || params.get('access_token') || hashParams.get('token') || hashParams.get('access_token');
-    if (token) {
-      localStorage.setItem('POLLY_AUTH_TOKEN', token);
+    const accessToken =
+      params.get('token') ||
+      params.get('access_token') ||
+      hashParams.get('token') ||
+      hashParams.get('access_token');
+    const idToken = params.get('id_token') || hashParams.get('id_token');
+    if (accessToken) {
+      try { localStorage.setItem('POLLY_AUTH_TOKEN', accessToken); } catch(_){}
       setAuthHeaderFromStorage();
-      // Clean token from URL
-      params.delete('token'); params.delete('access_token');
+    }
+    if (idToken) {
+      try { localStorage.setItem('POLLY_ID_TOKEN', idToken); } catch(_){}
+    }
+    // Clean token params from URL
+    params.delete('token'); params.delete('access_token'); params.delete('id_token');
+    const newSearch = params.toString();
+    history.replaceState({}, document.title, u.pathname + (newSearch ? ('?' + newSearch) : '') );
+  } catch(_){}
+}
+
+function captureIdTokenFromUrl(){
+  try {
+    const u = new URL(window.location.href);
+    const params = new URLSearchParams(u.search);
+    const hashParams = new URLSearchParams(u.hash.replace(/^#/, ''));
+    const idToken = params.get('id_token') || hashParams.get('id_token');
+    if (idToken) {
+      try { localStorage.setItem('POLLY_ID_TOKEN', idToken); } catch(_){}
+      // Clean id_token from URL (if present)
+      params.delete('id_token');
       const newSearch = params.toString();
       history.replaceState({}, document.title, u.pathname + (newSearch ? ('?' + newSearch) : '') );
     }
   } catch(_){}
+}
+
+function parseJwt(token) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const b64url = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padLen = (4 - (b64url.length % 4)) % 4;
+    const padded = b64url + '='.repeat(padLen);
+    const json = atob(padded);
+    return JSON.parse(json);
+  } catch(_) { return null; }
+}
+
+function updateAuthUI(){
+  const authed = isAuthenticated();
+  if (authed) {
+    if (loginLink) loginLink.style.display = 'none';
+    if (userMenu) userMenu.style.display = 'flex';
+    let pic = '';
+    try {
+      const idToken = localStorage.getItem('POLLY_ID_TOKEN');
+      const claims = idToken ? parseJwt(idToken) : null;
+      pic = (claims && (claims.picture || claims.avatar)) || '';
+    } catch(_){}
+    const fallbackSvg = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EEC2F8"/><stop offset="1" stop-color="#FFC4C8"/></linearGradient></defs><rect width="64" height="64" rx="32" fill="#fff"/><circle cx="32" cy="26" r="12" fill="url(#g)"/><path d="M16 52c0-9 7-16 16-16s16 7 16 16" fill="url(#g)"/></svg>');
+    if (avatarImage) {
+      try {
+        avatarImage.src = fallbackSvg; // default to fallback to avoid broken image
+        avatarImage.referrerPolicy = 'no-referrer';
+        avatarImage.onerror = function(){ this.onerror = null; this.src = fallbackSvg; };
+        if (pic) { avatarImage.src = pic; }
+      } catch(_){ }
+    }
+  } else {
+    if (loginLink) loginLink.style.display = 'inline-flex';
+    if (userMenu) { userMenu.style.display = 'none'; }
+    if (userPopover) userPopover.style.display = 'none';
+  }
+}
+
+function toggleUserPopover(e){
+  e && e.preventDefault();
+  // Avoid bubbling to document click that may immediately close
+  e && e.stopPropagation && e.stopPropagation();
+  if (!userPopover) return;
+  // Use computed style to correctly detect initial state ('' vs 'none')
+  const isShown = window.getComputedStyle(userPopover).display !== 'none';
+  if (isShown) {
+    userPopover.style.display = 'none';
+    userPopover.classList.remove('is-floating');
+  } else {
+    userPopover.style.display = 'block';
+    userPopover.classList.add('is-floating');
+  }
+  if (!isShown) {
+    const onDocClick = (evt) => {
+      const target = evt.target;
+      // Close only when clicking outside both popover and avatar button
+      if (!userPopover.contains(target) && !(avatarButton && avatarButton.contains(target))) {
+        userPopover.style.display = 'none';
+        userPopover.classList.remove('is-floating');
+        document.removeEventListener('click', onDocClick);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', onDocClick), 0);
+  }
+}
+
+function signOut(){
+  try { localStorage.removeItem('POLLY_AUTH_TOKEN'); } catch(_){}
+  try { localStorage.removeItem('POLLY_ID_TOKEN'); } catch(_){}
+  try {
+    if (window.POLLY_AUTH && window.POLLY_AUTH.CUSTOM_HEADERS) {
+      delete window.POLLY_AUTH.CUSTOM_HEADERS['Authorization'];
+    }
+  } catch(_){}
+  updateAuthUI();
+  showNotification('Signed out', 'success');
 }
 
 // File Upload Handlers
@@ -391,14 +578,16 @@ function handleDragLeave(e) {
 }
 
 function handleDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    uploadBox.classList.remove('drag-over');
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        const file = e.dataTransfer.files[0];
-        if (isValidImageFile(file)) {
-            processImageFile(file);
+  e.preventDefault();
+  e.stopPropagation();
+  uploadBox.classList.remove('drag-over');
+  // Block upload when not logged in
+  if (!requireAuthOrPrompt()) { return; }
+  
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    const file = e.dataTransfer.files[0];
+    if (isValidImageFile(file)) {
+      processImageFile(file);
         } else {
             showNotification('Please upload a valid image file.', 'error');
         }
@@ -406,6 +595,11 @@ function handleDrop(e) {
 }
 
 function handleFileSelect(e) {
+    // Block upload when not logged in
+    if (!requireAuthOrPrompt()) {
+        try { fileInput && (fileInput.value = ''); } catch(_) {}
+        return;
+    }
     if (fileInput.files && fileInput.files[0]) {
         const file = fileInput.files[0];
         if (isValidImageFile(file)) {
@@ -525,24 +719,26 @@ async function generate3DModel() {
     // Move preview area to loading state
     setPreviewState('loading');
     
-    // Always compress image to control payload size (avoid Vercel 413)
-    previewLoadingText && (previewLoadingText.textContent = 'Compressing image...');
+    // Analyze + preprocess, then compress to control payload size
+    previewLoadingText && (previewLoadingText.textContent = 'Analyzing & pre-processing image...');
     const baseIsSameOrigin = (window.POLLY_API && window.POLLY_API.BASE === '/');
-    // For same-origin proxy (Vercel function), use tighter compression
     let maxDim = baseIsSameOrigin ? 900 : 1280;
     let quality = baseIsSameOrigin ? 0.7 : 0.85;
-    let compressedDataUrl = compressImageToDataURL(uploadedImage, maxDim, quality, true);
+    let imgMetrics = computeImageMetrics(uploadedImage);
+    const preCanvas = preprocessImageWithMetrics(uploadedImage, imgMetrics);
+    const sourceEl = preCanvas || uploadedImage;
+    let compressedDataUrl = compressSourceToDataURL(sourceEl, maxDim, quality, true);
     // If still large, step down progressively
     const sizeLimitChars = 1800000; // ~1.8MB in base64 characters to stay well under limits
     let base64Len = (compressedDataUrl || '').length;
     if (base64Len > sizeLimitChars) {
       maxDim = 720; quality = 0.62;
-      compressedDataUrl = compressImageToDataURL(uploadedImage, maxDim, quality, true);
+      compressedDataUrl = compressSourceToDataURL(sourceEl, maxDim, quality, true);
       base64Len = compressedDataUrl.length;
     }
     if (base64Len > sizeLimitChars) {
       maxDim = 640; quality = 0.55;
-      compressedDataUrl = compressImageToDataURL(uploadedImage, maxDim, quality, true);
+      compressedDataUrl = compressSourceToDataURL(sourceEl, maxDim, quality, true);
       base64Len = compressedDataUrl.length;
     }
 
@@ -592,18 +788,48 @@ async function generate3DModel() {
     
     // Extract base64 data from the compressed Data URL
     const base64Data = compressedDataUrl.split(',')[1];
+    const mimeMatch = compressedDataUrl.match(/^data:([^;]+);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : null;
     
     // Prepare the request data (兼容不同后端约定)
     const faceParams = new URLSearchParams(window.location.search);
     const facesOverrideStr = faceParams.get('faceCount') || faceParams.get('faces');
     const faceCountOverride = facesOverrideStr ? Math.max(10000, parseInt(facesOverrideStr, 10) || 0) : null;
     const requestData = {
-        // 后端约定：image 字段使用纯 base64 字符串
-        image: base64Data
+        // 为兼容不同后端约定，同时传递常见字段名
+        image_base64: base64Data, // Vercel同源代理及部分后端约定
+        image: base64Data,        // 直连后端常见约定
+        base64: base64Data,       // 备用字段，一些后端使用此键
+        image_data_url: compressedDataUrl, // 完整 data URL，部分后端需要
+        data_url: compressedDataUrl        // 别名以增加兼容性
     };
+    if (mimeType) {
+        requestData.mime_type = mimeType; // 例如 image/jpeg、image/png、image/webp
+    }
     if (faceCountOverride && isFinite(faceCountOverride)) {
         requestData.face_count = faceCountOverride;
     }
+    // Inject dynamic parameters based on image metrics
+    const dynamicParams = chooseDynamicParams(imgMetrics);
+    if (!requestData.face_count && isFinite(dynamicParams.face_count)) {
+      requestData.face_count = dynamicParams.face_count;
+    }
+    requestData.depth_weight = dynamicParams.depth_weight;
+    requestData.edge_regularization = dynamicParams.edge_regularization;
+    requestData.shadow_suppression = dynamicParams.shadow_suppression;
+    requestData.highlight_suppression = dynamicParams.highlight_suppression;
+    requestData.scene_type = dynamicParams.scene_type;
+    requestData.quality_preset = dynamicParams.quality_preset;
+    requestData.hints = dynamicParams.hints;
+    // Guard: strip any prompt-like fields to avoid upstream validation issues
+    try {
+      delete requestData.prompt;
+      delete requestData.negative_prompt;
+      if (requestData.hints && typeof requestData.hints === 'object') {
+        delete requestData.hints.prompt;
+        delete requestData.hints.negative_prompt;
+      }
+    } catch(_) {}
     
     // Build API endpoints from runtime config (default same-origin)
     const primaryUrl = (window.POLLY_API && typeof window.POLLY_API.url === 'function')
@@ -613,19 +839,44 @@ async function generate3DModel() {
       ? window.POLLY_API.urlFrom(window.POLLY_API.FALLBACK_BASE, 'generate')
       : null;
 
-    // 若目标是你提供的 IP 后端且未显式传 faces，则默认附带 face_count=80000
+    // 若目标是你提供的 IP 后端且未显式传 faces，则默认附带较低的 face_count 以降低上游压力
     try {
       if (!requestData.face_count && primaryUrl) {
         const purl = new URL(primaryUrl, window.location.origin);
         if ((purl.host || '').includes('111.229.71.58:8086')) {
-          requestData.face_count = 80000;
+          requestData.face_count = 30000;
         }
+      }
+    } catch(_) {}
+
+    // 如果主端点是 HTTPS + 纯 IP（常见证书/网络问题场景），优先尝试回退端点
+    let firstUrl = primaryUrl;
+    let secondUrl = fallbackUrl;
+    try {
+      const p = new URL(primaryUrl, window.location.origin);
+      const isHttps = (p.protocol === 'https:');
+      const isIpHost = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(p.hostname);
+      if (isHttps && isIpHost && fallbackUrl) {
+        firstUrl = fallbackUrl;
+        secondUrl = primaryUrl;
+        console.warn('[Generate] Prefer fallback first due to HTTPS+IP origin:', p.href);
+      }
+    } catch(_) {}
+    // 允许通过参数强制优先使用回退端点：?fallbackFirst=1 或 window.POLLY_PREFER_FALLBACK_FIRST=true
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const prefer = (qs.get('fallbackFirst') === '1') || (window.POLLY_PREFER_FALLBACK_FIRST === true);
+      if (prefer && fallbackUrl) {
+        firstUrl = fallbackUrl;
+        secondUrl = primaryUrl;
+        console.warn('[Generate] fallbackFirst=1 active: trying fallback before primary');
       }
     } catch(_) {}
 
     // Timeout control (configurable via URL ?timeout or global window.POLLY_TIMEOUT_MS)
     const controller = new AbortController();
     const searchParams = new URLSearchParams(window.location.search);
+    const disableFormRetry = (searchParams.get('formRetry') === '0') || (window.POLLY_DISABLE_FORM_RETRY === true);
     const timeoutOverrideStr = searchParams.get('timeout') || searchParams.get('timeoutMs');
     const timeoutOverride = timeoutOverrideStr ? parseInt(timeoutOverrideStr, 10) : null;
     const runtimeTimeout = (typeof window.POLLY_TIMEOUT_MS === 'number' && window.POLLY_TIMEOUT_MS > 0)
@@ -678,6 +929,16 @@ async function generate3DModel() {
         mode: 'cors'
       };
 
+      // Debug: capture outgoing JSON payload summary (async create)
+      try {
+        window.POLLY_DEBUG_LAST = window.POLLY_DEBUG_LAST || { attempts: [] };
+        window.POLLY_DEBUG_LAST.outgoing = {
+          mode: 'json',
+          jsonKeys: Object.keys(requestData || {}),
+          hasPrompt: ('prompt' in (requestData||{})) || ('negative_prompt' in (requestData||{})) || (requestData && requestData.hints && (('prompt' in requestData.hints) || ('negative_prompt' in requestData.hints)))
+        };
+      } catch(_){}
+
       previewLoadingText && (previewLoadingText.textContent = 'Submitting task...');
       const startCreate = Date.now();
       fetch(createUrl, fetchOptsCreate)
@@ -694,9 +955,18 @@ async function generate3DModel() {
               return makeRequestWithFallback(primaryUrl, fallbackUrl, fetchOpts)
                 .then(blob => {
                   if (timeoutId) clearTimeout(timeoutId);
+                  // Preview via ArrayBuffer to avoid blob URL ERR_ABORTED
+                  try {
+                    blob.arrayBuffer().then(ab => loadGLBArrayBuffer(ab));
+                  } catch (e) {
+                    console.warn('ArrayBuffer preview failed, falling back to blob URL:', e);
+                    const fallbackUrl = URL.createObjectURL(blob);
+                    window.modelUrl = fallbackUrl;
+                    loadGLBModel(fallbackUrl);
+                  }
+                  // Always create blob URL for download
                   const modelUrl = URL.createObjectURL(blob);
                   window.modelUrl = modelUrl;
-                  loadGLBModel(modelUrl);
                   generateButton.disabled = false;
                   if (generateBtnText) generateBtnText.textContent = 'Generate';
                   showNotification('Model generated successfully! (sync fallback)', 'success');
@@ -797,11 +1067,21 @@ async function generate3DModel() {
             pollOnce();
           });
         })
-        .then(blob => {
+        .then(async (blob) => {
           if (timeoutId) clearTimeout(timeoutId);
+          // Preview from ArrayBuffer to avoid blob URL ERR_ABORTED
+          try {
+            const ab = await blob.arrayBuffer();
+            loadGLBArrayBuffer(ab);
+          } catch (e) {
+            console.warn('ArrayBuffer preview failed, falling back to blob URL:', e);
+            const modelUrlFallback = URL.createObjectURL(blob);
+            window.modelUrl = modelUrlFallback;
+            loadGLBModel(modelUrlFallback);
+          }
+          // Always create blob URL for download
           const modelUrl = URL.createObjectURL(blob);
           window.modelUrl = modelUrl;
-          loadGLBModel(modelUrl);
           generateButton.disabled = false;
           if (generateBtnText) generateBtnText.textContent = 'Generate';
           showNotification('Model generated successfully!', 'success');
@@ -832,7 +1112,7 @@ async function generate3DModel() {
     // Common fetch options
     const baseHeaders = {
         'Content-Type': 'application/json',
-        'Accept': 'model/gltf-binary,application/octet-stream'
+        'Accept': 'model/gltf-binary,application/octet-stream,application/json'
     };
     const extraHeaders = (window.POLLY_AUTH && typeof window.POLLY_AUTH.buildExtraHeaders === 'function')
       ? window.POLLY_AUTH.buildExtraHeaders()
@@ -847,21 +1127,127 @@ async function generate3DModel() {
         mode: 'cors'
     };
 
+    // Debug: capture outgoing JSON summary for sync path
+    try {
+      window.POLLY_DEBUG_LAST = window.POLLY_DEBUG_LAST || { attempts: [] };
+      window.POLLY_DEBUG_LAST.outgoing = {
+        mode: 'json',
+        jsonKeys: Object.keys(requestData || {}),
+        hasPrompt: ('prompt' in (requestData||{})) || ('negative_prompt' in (requestData||{})) || (requestData && requestData.hints && (('prompt' in requestData.hints) || ('negative_prompt' in requestData.hints)))
+      };
+    } catch(_){}
+
     // Same-origin now proxies to real backend: send full JSON payload
 
-    // Try primary; on failure or timeout, try fallback once (if provided)
-    makeRequestWithFallback(primaryUrl, fallbackUrl, fetchOpts)
-      .then(blob => {
+    // Prefer form-data first when enabled (improves compatibility with IP upstreams)
+    if (window.POLLY_PREFER_FORMDATA_FIRST === true) {
+      try {
+        console.warn('Prefer form-data first: attempting multipart upload');
+        previewLoadingText && (previewLoadingText.textContent = 'Uploading image (form-data)...');
+        // Build image blob from base64
+        let imgBlob = null;
+        try {
+          const raw = base64Data;
+          const bytes = atob(raw);
+          const arr = new Uint8Array(bytes.length);
+          for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+          imgBlob = new Blob([arr], { type: mimeType || 'image/webp' });
+        } catch (_) {}
+        const form = new FormData();
+        if (imgBlob) {
+          const ext = String((mimeType||'image/webp')).split('/')[1] || 'webp';
+          form.append('image_file', imgBlob, 'upload.' + ext);
+          form.append('file', imgBlob, 'upload.' + ext);
+        }
+        form.append('mime_type', mimeType || 'image/webp');
+        // Include common fields
+        if (typeof requestData.image_base64 === 'string') form.append('image_base64', requestData.image_base64);
+        if (typeof requestData.image === 'string') form.append('image', requestData.image);
+        if (typeof requestData.base64 === 'string') form.append('base64', requestData.base64);
+        if (typeof requestData.image_data_url === 'string') form.append('image_data_url', requestData.image_data_url);
+        if (typeof requestData.data_url === 'string') form.append('data_url', requestData.data_url);
+        // Append params; serialize objects as JSON
+        (function(){
+          const keys = ['face_count','depth_weight','edge_regularization','shadow_suppression','highlight_suppression','scene_type','quality_preset','hints'];
+          keys.forEach(k => {
+            if (typeof requestData[k] === 'undefined' || requestData[k] === null) return;
+            const v = requestData[k];
+            if (typeof v === 'object') { try { form.append(k, JSON.stringify(v)); } catch(_) { form.append(k, String(v)); } }
+            else { form.append(k, String(v)); }
+          });
+          // Explicitly avoid prompt-like keys if present accidentally
+          try {
+            form.delete('prompt');
+            form.delete('negative_prompt');
+          } catch(_){}
+        })();
+        const baseHeadersForm = { 'Accept': 'model/gltf-binary,application/octet-stream,application/json' };
+        const fetchOptsForm = {
+          method: 'POST',
+          headers: Object.assign({}, baseHeadersForm, extraHeaders),
+          body: form,
+          cache: 'no-store',
+          credentials: 'omit',
+          mode: 'cors'
+        };
+        // Debug: capture outgoing form-data summary
+        try {
+          const fk = Array.from(form.keys());
+          window.POLLY_DEBUG_LAST = window.POLLY_DEBUG_LAST || { attempts: [] };
+          window.POLLY_DEBUG_LAST.outgoing = {
+            mode: 'form',
+            formKeys: fk,
+            hasPrompt: fk.includes('prompt') || fk.includes('negative_prompt')
+          };
+        } catch(_){}
+        const blob = await makeRequestWithFallback(firstUrl, secondUrl, fetchOptsForm);
         if (timeoutId) clearTimeout(timeoutId);
+        try {
+          const ab = await blob.arrayBuffer();
+          loadGLBArrayBuffer(ab);
+        } catch (e) {
+          console.warn('ArrayBuffer preview failed, falling back to blob URL:', e);
+          const modelUrlFallback = URL.createObjectURL(blob);
+          window.modelUrl = modelUrlFallback;
+          loadGLBModel(modelUrlFallback);
+        }
         const modelUrl = URL.createObjectURL(blob);
         window.modelUrl = modelUrl;
-        loadGLBModel(modelUrl);
+        generateButton.disabled = false;
+        if (generateBtnText) generateBtnText.textContent = 'Generate';
+        showNotification('Model generated successfully! (form first)', 'success');
+        updateDebugPanel();
+        return; // success; skip JSON path
+      } catch (errFormFirst) {
+        console.warn('Form-data first attempt failed; retrying with JSON...', errFormFirst);
+        previewLoadingText && (previewLoadingText.textContent = 'Retrying with JSON...');
+        // Fall through to JSON flow below
+      }
+    }
+
+    // Try primary JSON; on failure or timeout, try fallback once (if provided)
+    makeRequestWithFallback(firstUrl, secondUrl, fetchOpts)
+      .then(async (blob) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        // Preview via ArrayBuffer first to avoid blob URL ERR_ABORTED
+        try {
+          const ab = await blob.arrayBuffer();
+          loadGLBArrayBuffer(ab);
+        } catch (e) {
+          console.warn('ArrayBuffer preview failed, falling back to blob URL:', e);
+          const modelUrlFallback = URL.createObjectURL(blob);
+          window.modelUrl = modelUrlFallback;
+          loadGLBModel(modelUrlFallback);
+        }
+        // Always create blob URL for download
+        const modelUrl = URL.createObjectURL(blob);
+        window.modelUrl = modelUrl;
         generateButton.disabled = false;
         if (generateBtnText) generateBtnText.textContent = 'Generate';
         showNotification('Model generated successfully!', 'success');
         updateDebugPanel();
       })
-      .catch(err => {
+      .catch(async (err) => {
         if (timeoutId) clearTimeout(timeoutId);
         const isAbort = (err && err.name === 'AbortError');
         if (isAbort) {
@@ -872,13 +1258,111 @@ async function generate3DModel() {
           updateDebugPanel(err);
           return;
         }
-        console.error('Error generating 3D model:', err);
-        setPreviewState('default');
-        generateButton.disabled = false;
-        if (generateBtnText) generateBtnText.textContent = 'Generate';
-        const msg = (err && err.message) ? err.message : 'Failed to generate 3D model.';
-        showNotification(msg + ' Please try again.', 'error');
-        updateDebugPanel(err);
+        // Optional: disable multipart/form-data retry via URL ?formRetry=0 or window.POLLY_DISABLE_FORM_RETRY
+        if (disableFormRetry) {
+          console.warn('Primary JSON flow failed; form retry disabled by configuration');
+          setPreviewState('default');
+          generateButton.disabled = false;
+          if (generateBtnText) generateBtnText.textContent = 'Generate';
+          const msg = (err && err.message) ? err.message : 'Failed to generate 3D model.';
+          showNotification(msg + ' Please try again.', 'error');
+          updateDebugPanel(err);
+          return;
+        }
+        // Secondary compatibility attempt: retry with multipart/form-data
+        try {
+          console.warn('Primary JSON flow failed; retrying with multipart/form-data');
+          previewLoadingText && (previewLoadingText.textContent = 'Retrying with form-data...');
+          // Build image blob from base64
+          let imgBlob = null;
+          try {
+            const raw = base64Data;
+            const bytes = atob(raw);
+            const arr = new Uint8Array(bytes.length);
+            for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+            imgBlob = new Blob([arr], { type: mimeType || 'image/webp' });
+          } catch (_) {}
+          const form = new FormData();
+          if (imgBlob) {
+            const ext = String((mimeType||'image/webp')).split('/')[1] || 'webp';
+            form.append('image_file', imgBlob, 'upload.' + ext);
+            form.append('file', imgBlob, 'upload.' + ext);
+          }
+          form.append('mime_type', mimeType || 'image/webp');
+          // Include common fields for broader backend compatibility
+          if (typeof requestData.image_base64 === 'string') form.append('image_base64', requestData.image_base64);
+          if (typeof requestData.image === 'string') form.append('image', requestData.image);
+          if (typeof requestData.base64 === 'string') form.append('base64', requestData.base64);
+          if (typeof requestData.image_data_url === 'string') form.append('image_data_url', requestData.image_data_url);
+          if (typeof requestData.data_url === 'string') form.append('data_url', requestData.data_url);
+          // Append numeric/string params
+          ;(function(){
+            const keys = ['face_count','depth_weight','edge_regularization','shadow_suppression','highlight_suppression','scene_type','quality_preset','hints'];
+            keys.forEach(k => {
+              if (typeof requestData[k] === 'undefined' || requestData[k] === null) return;
+              const v = requestData[k];
+              if (typeof v === 'object') {
+                try { form.append(k, JSON.stringify(v)); } catch(_) { form.append(k, String(v)); }
+              } else {
+                form.append(k, String(v));
+              }
+            });
+            // Explicitly avoid prompt-like keys if present accidentally
+            try {
+              form.delete('prompt');
+              form.delete('negative_prompt');
+            } catch(_){}
+          })();
+          const baseHeadersForm = {
+            // Let browser set Content-Type with boundary automatically
+            'Accept': 'model/gltf-binary,application/octet-stream,application/json'
+          };
+          const fetchOptsForm = {
+            method: 'POST',
+            headers: Object.assign({}, baseHeadersForm, extraHeaders),
+            body: form,
+            cache: 'no-store',
+            credentials: 'omit',
+            mode: 'cors'
+          };
+          // Debug: capture outgoing form-data summary (retry path)
+          try {
+            const fk = Array.from(form.keys());
+            window.POLLY_DEBUG_LAST = window.POLLY_DEBUG_LAST || { attempts: [] };
+            window.POLLY_DEBUG_LAST.outgoing = {
+              mode: 'form',
+              formKeys: fk,
+              hasPrompt: fk.includes('prompt') || fk.includes('negative_prompt')
+            };
+          } catch(_){}
+          const blob = await makeRequestWithFallback(firstUrl, secondUrl, fetchOptsForm);
+          // Preview from ArrayBuffer first to avoid blob URL ERR_ABORTED
+          try {
+            const ab = await blob.arrayBuffer();
+            loadGLBArrayBuffer(ab);
+          } catch (e) {
+            console.warn('ArrayBuffer preview failed, falling back to blob URL:', e);
+            const modelUrlFallback = URL.createObjectURL(blob);
+            window.modelUrl = modelUrlFallback;
+            loadGLBModel(modelUrlFallback);
+          }
+          // Always create blob URL for download
+          const modelUrl = URL.createObjectURL(blob);
+          window.modelUrl = modelUrl;
+          generateButton.disabled = false;
+          if (generateBtnText) generateBtnText.textContent = 'Generate';
+          showNotification('Model generated successfully! (form retry)', 'success');
+          updateDebugPanel();
+          return;
+        } catch (e2) {
+          console.error('Error generating 3D model:', err, '\nForm retry error:', e2);
+          setPreviewState('default');
+          generateButton.disabled = false;
+          if (generateBtnText) generateBtnText.textContent = 'Generate';
+          const msg = (e2 && e2.message) ? e2.message : ((err && err.message) ? err.message : 'Failed to generate 3D model.');
+          showNotification(msg + ' Please try again.', 'error');
+          updateDebugPanel(e2);
+        }
       });
 }
 
@@ -1037,6 +1521,65 @@ function loadGLBModel(url) {
             setPreviewState('default');
         }
     );
+}
+
+// Load GLB model from an ArrayBuffer (avoid blob: URL loading issues)
+function loadGLBArrayBuffer(arrayBuffer) {
+    // Clear previous model if exists
+    if (model) {
+        scene.remove(model);
+    }
+
+    // Keep UI in loading; attach canvas only when completed
+    updateRendererSize();
+
+    if (!window.GLTFLoader) {
+      throw new Error('GLTFLoader not loaded');
+    }
+    const loader = new window.GLTFLoader();
+    try {
+        loader.parse(arrayBuffer, '',
+            // Success callback
+            (gltf) => {
+                model = gltf.scene;
+
+                // Center the model
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                // Reset model position
+                model.position.x = -center.x;
+                model.position.y = -center.y;
+                model.position.z = -center.z;
+
+                // Add model to scene
+                scene.add(model);
+
+                // Reset camera view
+                resetView();
+
+                // Switch to completed state and attach renderer canvas
+                setPreviewState('completed');
+                if (renderer && renderer.domElement && !modelViewer.contains(renderer.domElement)) {
+                    modelViewer.appendChild(renderer.domElement);
+                }
+
+                // Enable download button
+                downloadBtn.disabled = false;
+            },
+            // Error callback
+            (error) => {
+                console.error('Error parsing GLB ArrayBuffer:', error);
+                showNotification('Failed to load 3D model', 'error');
+                setPreviewState('default');
+            }
+        );
+    } catch (err) {
+        console.error('GLTFLoader.parse threw:', err);
+        showNotification('Failed to load 3D model', 'error');
+        setPreviewState('default');
+    }
 }
 
 // Centralized preview state manager
@@ -1205,6 +1748,11 @@ async function submitPrintOrder(){
 
 // Utility Functions
 function showNotification(message, type = 'success') {
+    // Gracefully handle pages without notification elements
+    if (!notification || !notificationMessage) {
+        try { console.log('[Notification]', type + ':', message); } catch(_){}
+        return;
+    }
     notificationMessage.textContent = message;
     
     // Set notification color based on type
@@ -1269,6 +1817,162 @@ function compressImageToDataURL(imgEl, maxDim = 1280, quality = 0.85, preferWebp
     return canvas.toDataURL('image/jpeg', quality);
 }
 
+// Helper: compress image/canvas source with max dimension and quality
+function compressSourceToDataURL(srcEl, maxDim = 1280, quality = 0.85, preferWebp = false) {
+  const isCanvas = (srcEl && srcEl.tagName === 'CANVAS');
+  const nw = isCanvas ? srcEl.width : (srcEl.naturalWidth || srcEl.width);
+  const nh = isCanvas ? srcEl.height : (srcEl.naturalHeight || srcEl.height);
+  let tw = nw, th = nh;
+  if (nw > nh && nw > maxDim) {
+    const scale = maxDim / nw;
+    tw = Math.round(nw * scale);
+    th = Math.round(nh * scale);
+  } else if (nh >= nw && nh > maxDim) {
+    const scale = maxDim / nh;
+    tw = Math.round(nh * scale) * (nw / nh);
+    th = Math.round(nh * scale);
+    tw = Math.round(tw);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(tw));
+  canvas.height = Math.max(1, Math.round(th));
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(srcEl, 0, 0, canvas.width, canvas.height);
+  try {
+    if (preferWebp) {
+      const webp = canvas.toDataURL('image/webp', quality);
+      if (typeof webp === 'string' && webp.startsWith('data:image/webp')) {
+        return webp;
+      }
+    }
+  } catch(_) {}
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+// Helper: compute basic image metrics for dynamic parameter selection
+function computeImageMetrics(imgEl) {
+  const w = imgEl.naturalWidth || imgEl.width;
+  const h = imgEl.naturalHeight || imgEl.height;
+  const sampleMax = 256;
+  const scale = Math.min(1, sampleMax / Math.max(w, h));
+  const tw = Math.max(1, Math.round(w * scale));
+  const th = Math.max(1, Math.round(h * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = tw; canvas.height = th;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imgEl, 0, 0, tw, th);
+  const data = ctx.getImageData(0, 0, tw, th);
+  const px = data.data;
+  const N = tw * th;
+  let sum = 0, sum2 = 0, highlights = 0, shadows = 0;
+  const gray = new Float32Array(N);
+  for (let i = 0, j = 0; i < px.length; i += 4, j++) {
+    const r = px[i], g = px[i+1], b = px[i+2];
+    const v = 0.299*r + 0.587*g + 0.114*b;
+    gray[j] = v;
+    sum += v; sum2 += v*v;
+    if (v >= 230) highlights++;
+    if (v <= 25) shadows++;
+  }
+  const mean = sum / N;
+  const contrast = Math.sqrt(Math.max(0, sum2 / N - mean*mean));
+  const highlightsRatio = highlights / N;
+  const shadowsRatio = shadows / N;
+  const sobelThreshold = 100; let edgeCount = 0;
+  for (let y = 1; y < th-1; y++) {
+    for (let x = 1; x < tw-1; x++) {
+      const i = y*tw + x;
+      const gx = -gray[i-tw-1] - 2*gray[i-1] - gray[i+tw-1]
+               +  gray[i-tw+1] + 2*gray[i+1] + gray[i+tw+1];
+      const gy =  gray[i-tw-1] + 2*gray[i-tw] + gray[i-tw+1]
+               -  gray[i+tw-1] - 2*gray[i+tw] - gray[i+tw+1];
+      const mag = Math.sqrt(gx*gx + gy*gy);
+      if (mag > sobelThreshold) edgeCount++;
+    }
+  }
+  const edgeDensity = edgeCount / ((tw-2)*(th-2));
+  return {
+    width: w, height: h, aspect: w/h,
+    brightness: mean, contrast,
+    highlightsRatio, shadowsRatio, edgeDensity
+  };
+}
+
+// Helper: lightweight preprocess to improve contrast and edges
+function preprocessImageWithMetrics(imgEl, metrics) {
+  const w = imgEl.naturalWidth || imgEl.width;
+  const h = imgEl.naturalHeight || imgEl.height;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imgEl, 0, 0, w, h);
+  let imgData = ctx.getImageData(0, 0, w, h);
+  const d = imgData.data;
+  let gamma = 1.0;
+  if (metrics.shadowsRatio > 0.12 && metrics.brightness < 90) gamma = 0.85;
+  else if (metrics.highlightsRatio > 0.12 && metrics.brightness > 160) gamma = 1.15;
+  else if (metrics.contrast < 25) gamma = 0.95;
+  const invGamma = 1 / gamma;
+  const lut = new Uint8ClampedArray(256);
+  for (let i = 0; i < 256; i++) lut[i] = Math.max(0, Math.min(255, Math.round(Math.pow(i/255, invGamma) * 255)));
+  for (let i = 0; i < d.length; i += 4) { d[i] = lut[d[i]]; d[i+1] = lut[d[i+1]]; d[i+2] = lut[d[i+2]]; }
+  const blur = (src, w, h) => {
+    const out = new Uint8ClampedArray(src.length);
+    const kernel = [1,2,1, 2,4,2, 1,2,1]; const ksum = 16;
+    for (let y = 1; y < h-1; y++) {
+      for (let x = 1; x < w-1; x++) {
+        let r=0,g=0,b=0,a=0, ki=0;
+        for (let ky=-1; ky<=1; ky++) {
+          for (let kx=-1; kx<=1; kx++) {
+            const idx = ((y+ky)*w + (x+kx)) * 4; const kv = kernel[ki++];
+            r += src[idx] * kv; g += src[idx+1] * kv; b += src[idx+2] * kv; a += src[idx+3] * kv;
+          }
+        }
+        const o = (y*w + x) * 4; out[o]=r/ksum; out[o+1]=g/ksum; out[o+2]=b/ksum; out[o+3]=a/ksum;
+      }
+    }
+    return out;
+  };
+  const blurred = blur(d, w, h);
+  const amount = Math.min(1.0, 0.6 + (metrics.edgeDensity || 0) * 0.8);
+  for (let i = 0; i < d.length; i += 4) {
+    const dr = d[i]   - blurred[i];
+    const dg = d[i+1] - blurred[i+1];
+    const db = d[i+2] - blurred[i+2];
+    d[i]   = Math.max(0, Math.min(255, d[i]   + dr*amount));
+    d[i+1] = Math.max(0, Math.min(255, d[i+1] + dg*amount));
+    d[i+2] = Math.max(0, Math.min(255, d[i+2] + db*amount));
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return canvas;
+}
+
+// Helper: choose dynamic params for backend based on metrics
+function chooseDynamicParams(metrics) {
+  let sceneType = 'normal';
+  if (metrics.shadowsRatio > 0.12 && metrics.brightness < 90) sceneType = 'low_light';
+  else if (metrics.highlightsRatio > 0.12 && metrics.brightness > 160) sceneType = 'high_reflective';
+  else if (metrics.contrast < 25) sceneType = 'flat_contrast';
+  const edgeDensity = metrics.edgeDensity || 0;
+  const faceCount = edgeDensity > 0.14 ? 120000 : (sceneType === 'flat_contrast' ? 100000 : 80000);
+  return {
+    scene_type: sceneType,
+    depth_weight: sceneType === 'flat_contrast' ? 1.35 : 1.0,
+    edge_regularization: edgeDensity > 0.14 ? 1.15 : 0.9,
+    shadow_suppression: sceneType === 'low_light' ? 0.2 : 0.3,
+    highlight_suppression: sceneType === 'high_reflective' ? 0.6 : 0.35,
+    quality_preset: (edgeDensity > 0.18 || sceneType !== 'normal') ? 'high' : 'balanced',
+    face_count: faceCount,
+    hints: {
+      brightness: Math.round(metrics.brightness),
+      contrast: Math.round(metrics.contrast),
+      highlightsRatio: Number(metrics.highlightsRatio.toFixed(3)),
+      shadowsRatio: Number(metrics.shadowsRatio.toFixed(3)),
+      edgeDensity: Number(edgeDensity.toFixed(3))
+    }
+  };
+}
+
 // Helper: request with one fallback attempt
 async function makeRequestWithFallback(primaryUrl, fallbackUrl, opts) {
     const baseOpts = opts || {};
@@ -1305,9 +2009,49 @@ async function makeRequestWithFallback(primaryUrl, fallbackUrl, opts) {
             attempt.responseTextSample = text ? text.slice(0, 2000) : '';
             throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ' - ' + text : ''}`);
         }
-        const blob = await res.blob();
-        attempt.blobSize = blob.size || null;
-        return blob;
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        if (ct.includes('application/json')) {
+            const text = await res.text();
+            let json = {};
+            try { json = JSON.parse(text); } catch (_) {}
+            const urlField = json.result_url || json.glb_url || json.url;
+            const base64Field = (json.result && (json.result.glb_base64 || json.result.glb_data_url)) || json.glb_base64 || json.glb_data_url;
+            if (urlField) {
+                const bstart = Date.now();
+                const bres = await fetch(urlField, { cache: 'no-store', mode: 'cors' });
+                const bd = Date.now() - bstart;
+                window.POLLY_DEBUG_LAST = window.POLLY_DEBUG_LAST || { attempts: [] };
+                window.POLLY_DEBUG_LAST.attempts.push({ url: urlField, status: bres.status, statusText: bres.statusText, durationMs: bd });
+                if (!bres.ok) {
+                    const t = await bres.text().catch(() => '');
+                    throw new Error(`Result fetch failed: HTTP ${bres.status} ${bres.statusText}${t ? ' - ' + t : ''}`);
+                }
+                const blob = await bres.blob();
+                attempt.blobSize = blob.size || null;
+                return blob;
+            } else if (base64Field) {
+                try {
+                    const raw = base64Field.includes(',') ? base64Field.split(',')[1] : base64Field;
+                    const bytes = atob(raw);
+                    const arr = new Uint8Array(bytes.length);
+                    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+                    const blob = new Blob([arr], { type: 'model/gltf-binary' });
+                    attempt.blobSize = blob.size || null;
+                    return blob;
+                } catch (_) {
+                    throw new Error('Invalid base64 result from backend');
+                }
+            } else if (json.bytes) {
+                const blob = new Blob([json.bytes], { type: 'model/gltf-binary' });
+                attempt.blobSize = blob.size || null;
+                return blob;
+            }
+            throw new Error('No result in JSON response');
+        } else {
+            const blob = await res.blob();
+            attempt.blobSize = blob.size || null;
+            return blob;
+        }
     };
     try {
         return await tryFetch(primaryUrl);
@@ -1357,6 +2101,19 @@ function updateDebugPanel(err) {
       lines.push('No request attempts captured.');
       lines.push('');
     }
+    // Outgoing payload summary
+    if (last && last.outgoing) {
+      lines.push('Outgoing payload:');
+      lines.push(`Mode: ${last.outgoing.mode}`);
+      if (Array.isArray(last.outgoing.jsonKeys)) {
+        lines.push(`JSON keys: ${last.outgoing.jsonKeys.join(', ')}`);
+      }
+      if (Array.isArray(last.outgoing.formKeys)) {
+        lines.push(`Form keys: ${last.outgoing.formKeys.join(', ')}`);
+      }
+      lines.push(`Contains prompt: ${last.outgoing.hasPrompt ? 'YES' : 'NO'}`);
+      lines.push('');
+    }
     if (err) {
       const errName = err.name || 'Error';
       const errMsg = err.message || String(err);
@@ -1364,4 +2121,64 @@ function updateDebugPanel(err) {
     }
     debugContent.textContent = lines.join('\n');
 }
+// --- Order page rendering helpers ---
+function getUserKey(){
+  let idToken = '';
+  try { idToken = localStorage.getItem('POLLY_ID_TOKEN') || ''; } catch(_){}
+  let userId = 'guest';
+  if (idToken) {
+    try { const p = parseJwt(idToken) || {}; userId = p.sub || p.email || p.phone_number || 'guest'; } catch(_){ }
+  }
+  return 'orders:' + userId;
+}
+
+function loadOrders(){
+  try {
+    const raw = localStorage.getItem(getUserKey());
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch(_) { return []; }
+}
+
+function renderOrders(){
+  const emptyEl = document.getElementById('orders-empty');
+  const listEl = document.getElementById('orders-list') || document.querySelector('.orders-list');
+  if (!listEl) return;
+
+  const orders = loadOrders();
+  listEl.innerHTML = '';
+
+  if (!orders.length) {
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  orders.forEach(order => {
+    const price = (order.price_usd_cents ? (order.price_usd_cents / 100) : 100).toFixed(2);
+    const createdAt = order.created_at ? new Date(order.created_at).toLocaleDateString() : '';
+    const snapshot = order.snapshot_data_url || 'assets/images/hero-banner.jpg';
+    const title = order.title || order.model_name || 'Custom Model';
+    const id = order.id || '-';
+
+    const article = document.createElement('article');
+    article.className = 'order-card';
+    article.innerHTML = `
+      <div class="order-left"><img src="${snapshot}" alt="Order item" /></div>
+      <div class="order-center">
+        <h3 class="order-title">${title}</h3>
+        <div class="order-meta">
+          <span>订单号：${id}</span>
+          <span>${createdAt}</span>
+        </div>
+      </div>
+      <div class="order-right">
+        <div class="row"><span>Subtotal</span><span>$ ${price}</span></div>
+        <div class="row"><span>Shipping</span><span>FREE</span></div>
+        <div class="order-total">Total &nbsp; $ ${price}</div>
+      </div>`;
+    listEl.appendChild(article);
+  });
+}
+
 const uploadArea = document.querySelector('.upload-area');

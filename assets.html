@@ -1,78 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <!-- Google OAuth redirect override for local dev (must match client config) -->
-  <meta name="polly-google-redirect-uri" content="http://localhost:5500/">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Polly FAQ</title>
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/login.css">
-  <style>
-    .details-card { background: var(--surface-color); border: 1px solid var(--light-gray); border-radius: 10px; padding: 16px; margin-bottom: 12px; color: var(--text-color); }
-    /* 标题与内容间距、更好的自适应字号 */
-    .converter-section .container h2 {
-      margin-bottom: 12px;
-      font-size: clamp(22px, 2.8vw, 28px);
-      line-height: 1.2;
-    }
-    /* 页面顶部与内容的间距（仅 FAQ 页作用） */
-    .converter-section {
-      padding-top: clamp(18px, 3.2vw, 36px);
-    }
-    /* 取消页面内联的导航内边距覆盖，统一使用全局样式 */
-    /* header nav { padding: clamp(10px, 2.4vw, 16px) 24px; } */
-    /* 统一使用全局样式中的固定间距（避免页面切换造成差异） */
-    /* .nav-links { gap: 40px; } // 不再在页面内覆盖 */
-    /* 问题与答案的自适应字号与行高 */
-    details summary {
-      cursor: pointer;
-      font-weight: 600;
-      font-size: clamp(16px, 2.4vw, 18px);
-      line-height: 1.35;
-    }
-    .details-card div {
-      font-size: clamp(14px, 2.2vw, 16px);
-      line-height: 1.7;
-    }
-    details[open] summary { color: var(--primary-color); }
-    @media (max-width: 480px) {
-      .details-card { padding: 14px; }
-    }
+    <meta charset="UTF-8">
+    <!-- Google OAuth redirect override for local dev (must match client config) -->
+    <meta name="polly-google-redirect-uri" content="http://localhost:5500/">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polly — My Assets</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/login.css">
+    <!-- Model Viewer: CSP-friendly 3D viewer (no unsafe-eval) -->
+    <script type="module" src="https://unpkg.com/@google/model-viewer@1.12.0/dist/model-viewer.min.js"></script>
+    <style>
+      /* My Assets 页面：参考 Gallery 的基础布局与背景 */
+      .converter-section {
+        padding-top: clamp(18px, 3.2vw, 36px);
+      }
+      .converter-section .container h2 {
+        margin-bottom: 12px;
+        font-size: clamp(22px, 2.8vw, 28px);
+        line-height: 1.2;
+      }
+      .converter-section .container p {
+        font-size: clamp(14px, 2.2vw, 16px);
+        line-height: 1.7;
+        margin-bottom: clamp(12px, 2.6vw, 16px) !important;
+        color: #6c757d;
+      }
 
-    /* 页底背景改为体验图（仅 FAQ 页，更高优先级覆盖） */
-    .converter-section + footer::before {
-      background: url('assets/images/tab2-bg.png') center / cover no-repeat !important;
-      backdrop-filter: none !important;
-      opacity: 1 !important;
-      content: "" !important;
-      position: absolute !important;
-      inset: 0 !important;
-      pointer-events: none !important;
-    }
+      /* 已移除标签筛选区，因此不需要专属样式 */
 
-    /* 直接覆盖整页背景：严格使用提供的图片 */
-    body {
-      background-color: #F4F7FF !important;
-      background-image: url('assets/images/tab2-bg.png') !important;
-      background-repeat: no-repeat !important;
-      background-position: center top !important;
-      background-size: cover !important;
-    }
-  </style>
-  <!-- Three.js libs not required here -->
+      /* 页底背景图保持一致 */
+      .converter-section + footer::before {
+        background: url('assets/images/tab2-bg.png') center / cover no-repeat !important;
+        backdrop-filter: none !important;
+        opacity: 1 !important;
+        content: "" !important;
+        position: absolute !important;
+        inset: 0 !important;
+        pointer-events: none !important;
+      }
+
+      /* 整页背景（与 Gallery 一致，便于统一体验） */
+      body {
+        background-color: #F4F7FF !important;
+        background-image: url('assets/images/tab2-bg.png') !important;
+        background-repeat: no-repeat !important;
+        background-position: center top !important;
+        background-size: cover !important;
+      }
+    </style>
 </head>
 <body>
-  <header>
-    <nav>
-      <a class="logo" href="index.html" aria-label="Polly home">
-        <img src="assets/images/logo-modern.svg" alt="Polly logo" onerror="this.onerror=null; this.src='assets/images/logo.png';" />
-        <span class="logo-text">Polly</span>
-      </a>
+    <header>
+        <nav>
+        <a class="logo" href="index.html" aria-label="Polly home">
+          <img src="assets/images/logo-modern.svg" alt="Polly logo" onerror="this.onerror=null; this.src='assets/images/logo.png';" />
+          <span class="logo-text">Polly</span>
+        </a>
       <ul class="nav-links">
         <li><a href="index.html">Home</a></li>
         <li><a href="gallery.html">Gallery</a></li>
-        <li><a href="faq.html" class="active">FAQ</a></li>
+        <li><a href="faq.html">FAQ</a></li>
         <li><a id="login-link" href="#">Login</a></li>
         <!-- User menu: shown after authentication -->
         <li id="user-menu" style="display:none; position:relative;">
@@ -95,71 +83,36 @@
           </div>
         </li>
       </ul>
-    </nav>
-  </header>
+        </nav>
+    </header>
 
-  <section class="converter-section">
-    <div class="container">
-      <h2>FAQ</h2>
+    <section class="converter-section">
+        <div class="container">
+            <h2>My Assets</h2>
+            <p style="margin-bottom: 16px; color:#6c757d;">Your generated models and uploads in one place</p>
 
-      <details class="details-card">
-        <summary>How do I upload and convert an image to a 3D model?</summary>
-        <div style="margin-top:8px;">On the Home page, click the upload area and select a JPEG/PNG/WebP image. The system processes it and shows a 3D preview on the right.</div>
-      </details>
+            <!-- 标签筛选区移除：My Assets 不显示分类标签 -->
 
-      <details class="details-card">
-        <summary>What formats are supported?</summary>
-        <div style="margin-top:8px;">Images: JPEG, PNG, WebP. Generated 3D models are exported as GLB, usable directly in compatible viewers.</div>
-      </details>
+            <!-- Grid：暂时复用 Gallery 网格与加载方式 -->
+            <div id="assets-grid" class="gallery-grid"></div>
+            <div id="assets-loader" class="gallery-loader" aria-live="polite" aria-busy="false">Loading more…</div>
+            <div id="assets-sentinel" style="height: 1px; margin-top: 8px; opacity: 0; pointer-events: none;"></div>
+        </div>
+    </section>
 
-      <details class="details-card">
-        <summary>How do I download the generated 3D model?</summary>
-        <div style="margin-top:8px;">Click the "Download GLB" button in the preview area or on the gallery card to download the model file.</div>
-      </details>
-
-      <details class="details-card">
-        <summary>What browsers are supported?</summary>
-        <div style="margin-top:8px;">Modern browsers (Chrome, Edge, Safari, Firefox) are supported. If the 3D preview behaves unexpectedly, please update your browser.</div>
-      </details>
-
-      <details class="details-card">
-        <summary>What if loading is slow or the model appears blank?</summary>
-        <div style="margin-top:8px;">Check your network and file integrity. The page includes placeholders and error hints; if issues persist, refresh the page or re-upload.</div>
-      </details>
-
-      <details class="details-card">
-        <summary>How are gallery categories (Object/Car/Helmet/Role) determined?</summary>
-        <div style="margin-top:8px;">Categories are mapped by filename or specific rules. If you request changes, we will update both the mapping and filter chips.</div>
-      </details>
-
-      <!-- New Gachi3D Q&A items -->
-      <details class="details-card">
-        <summary>How do I get started with Gachi3D?</summary>
-        <div style="margin-top:8px;">Visit our 3D Generator on the Home page and choose either Text‑to‑3D or Image‑to‑3D. Enter your description or upload an image, then click Generate. The process typically takes 1–3 minutes.</div>
-      </details>
-
-      <details class="details-card">
-        <summary>How is the quality of generated 3D models?</summary>
-        <div style="margin-top:8px;">We use the Tencent Hunyuan 3D API to produce high‑quality models with clear geometry, clean topology, and sensible textures. For complex scenes, provide detailed prompts to achieve better results.</div>
-      </details>
-
-      <details class="details-card">
-        <summary>What should I do if generation fails?</summary>
-        <div style="margin-top:8px;">Check whether your prompt is clear and specific, confirm the uploaded image is sharp and in a supported format, and ensure a stable network connection. If problems persist, contact support or try generating again.</div>
-      </details>
-
-      <details class="details-card">
-        <summary>How many times can I download a model?</summary>
-        <div style="margin-top:8px;">Generated models can be downloaded unlimited times within 24 hours. After 24 hours, models are automatically cleaned up. Please download and save the files you need in time.</div>
-      </details>
-
-      <details class="details-card">
-        <summary>Why does generation take so long?</summary>
-        <div style="margin-top:8px;">3D model generation is a complex AI computation process and usually takes 1–3 minutes. Duration depends on model complexity and server load. We continuously optimize our algorithms to improve speed.</div>
-      </details>
-
+    <!-- 3D Preview Modal -->
+    <div id="model-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span id="modal-close" class="modal-close">&times;</span>
+            <div id="modal-3d-container" style="width:100%; height:70vh; background:rgba(0,0,0,0.05); border-radius:8px;"></div>
+            <div style="margin-top: 12px; display:flex; justify-content:flex-end; gap:8px;">
+                <button id="modal-prev" class="btn btn-text">Prev</button>
+                <button id="modal-next" class="btn btn-text">Next</button>
+                <button id="modal-download-glb" class="btn btn-download-glb" disabled>Download GLB</button>
+                <button id="modal-download-snapshot" class="btn btn-secondary" disabled>Download Poster</button>
+            </div>
+        </div>
     </div>
-  </section>
 
 <footer>
   <div class="container">
@@ -184,7 +137,7 @@
         <span class="login-title">Sign In</span>
         <button id="login-close" aria-label="Close" class="login-close">×</button>
       </div>
-      <!-- Step 1: method selection -->
+        <!-- Step 1: method selection -->
       <div id="login-step-select" class="login-section" style="display:block;">
         <button id="select-email-or-phone" class="login-btn neutral figma-cta">
           <span>✉️</span>
@@ -200,7 +153,7 @@
         </button>
         <div class="login-disclaimer">I agree to the <a href="terms.html">Terms of Use</a> and <a href="privacy.html">Privacy Policy</a></div>
       </div>
-      <!-- Step 2: forms -->
+        <!-- Step 2: forms -->
       <div id="login-step-forms" class="login-section" style="display:none;">
         <div class="login-row" style="margin-bottom:10px;">
           <button id="login-back" class="login-back">←</button>
@@ -210,7 +163,7 @@
           <button id="tab-sms-otp" class="login-btn neutral tab">Phone</button>
           <button id="tab-email-otp" class="login-btn neutral tab">Email</button>
         </div>
-        <!-- SMS OTP Login -->
+          <!-- SMS OTP Login -->
         <div id="login-form-sms-otp" class="login-form" style="display:flex;">
           <div class="login-row">
             <select id="sms-country" class="login-select">
@@ -228,7 +181,7 @@
           </div>
           <button id="sms-otp-login" class="login-btn primary login-submit" disabled>Continue</button>
         </div>
-        <!-- Email OTP Login -->
+          <!-- Email OTP Login -->
         <div id="login-form-email-otp" class="login-form">
           <input id="email-otp-email" type="email" placeholder="Email" class="login-input" />
           <div class="login-row">
@@ -248,19 +201,9 @@
   <script>
     (function(){
       try {
+        // 在 localhost 环境下，使用本地代理，避免浏览器跨域失败
         if (window.location.hostname === 'localhost') {
           window.POLLY_AUTH_BASE = 'http://localhost:8788/';
-        } else {
-          window.POLLY_AUTH_BASE = "https://sh-prd-llm.xverse.cn/yunjing/yunjing-proxy/";
-        }
-      } catch(_){ }
-    })();
-  </script>
-  <script>
-    (function(){
-      try {
-        if (window.location.hostname === 'localhost') {
-          // 使用本地代理：避免跨域失败
           window.POLLY_API_BASE = 'http://localhost:8788/';
           window.POLLY_API_FALLBACK_BASE = '';
           window.POLLY_PREFER_FORMDATA_FIRST = false;
@@ -285,13 +228,13 @@
       const loginLink = document.getElementById('login-link');
       const loginModal = document.getElementById('login-modal');
       const loginClose = document.getElementById('login-close');
-      // 点击背景关闭
-      if (loginModal) {
-        loginModal.addEventListener('click', function(e){ if (e.target === loginModal) { loginModal.style.display = 'none'; } });
-      }
-      const loginStepSelect = document.getElementById('login-step-select');
-      const loginStepForms = document.getElementById('login-step-forms');
-      const loginBack = document.getElementById('login-back');
+        // 点击背景关闭
+        if (loginModal) {
+          loginModal.addEventListener('click', function(e){ if (e.target === loginModal) { loginModal.style.display = 'none'; } });
+        }
+        const loginStepSelect = document.getElementById('login-step-select');
+        const loginStepForms = document.getElementById('login-step-forms');
+        const loginBack = document.getElementById('login-back');
       const tabEmailOtp = document.getElementById('tab-email-otp');
       const tabSmsOtp = document.getElementById('tab-sms-otp');
       const formEmailOtp = document.getElementById('login-form-email-otp');
@@ -312,15 +255,15 @@
       // Apple 登录：优先调用官方 SDK，失败时回退到后端重定向
       function loginWithApple(){
         const base = (function(){
-          try {
-            var b = window.POLLY_AUTH_BASE || '';
-            if (b) {
-              if (!/\/$/.test(b)) b += '/';
-              return b + 'oauth/apple/start';
-            }
-          } catch(_){ }
-          return (window.POLLY_API && typeof window.POLLY_API.url === 'function') ? window.POLLY_API.url('oauth/apple/start') : '/oauth/apple/start';
-        })();
+        try {
+          var b = window.POLLY_AUTH_BASE || '';
+          if (b) {
+            if (!/\/$/.test(b)) b += '/';
+            return b + 'oauth/apple/start';
+          }
+        } catch(_){ }
+        return (window.POLLY_API && typeof window.POLLY_API.url === 'function') ? window.POLLY_API.url('oauth/apple/start') : '/oauth/apple/start';
+      })();
         const redirectUri = window.location.origin + '/';
         const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
         try {
@@ -349,8 +292,12 @@
       } catch(_) {}
     })();
   </script>
-  <!-- Config + shared auth/UI logic -->
-  <script src="js/config.js" defer></script>
-  <script src="js/main.js" defer></script>
-</body>
+
+    <!-- Config + shared auth/UI logic -->
+    <script src="js/config.js" defer></script>
+    <script src="js/main.js" defer></script>
+    <!-- 复用 Gallery 的脚本以展示与加载网格；后续可替换为用户资产数据源 -->
+    <script src="js/gallery.js" defer></script>
+    <script src="js/fallback.js" defer></script>
+  </body>
 </html>

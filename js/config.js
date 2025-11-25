@@ -15,13 +15,28 @@
   const search = new URLSearchParams(window.location.search);
   const searchBase = search.get('apiBase');
   const searchFallbackBase = search.get('fallbackApiBase');
+  const enableFallbackFlag = (search.get('fallback') === '1');
   const metaEl = document.querySelector('meta[name="polly-api-base"]');
   const metaBase = metaEl && metaEl.getAttribute('content');
-  const chosenBase = window.POLLY_API_BASE || searchBase || metaBase || DEFAULT_BASE;
+  // Only honor meta-defined base on local to avoid breaking production with localhost
+  const hostname = (window.location && window.location.hostname) || '';
+  const isLocalHost = /^(localhost|127\.0\.0\.1|::1)$/.test(hostname);
+  const chosenBase = window.POLLY_API_BASE || searchBase || (isLocalHost ? metaBase : '') || DEFAULT_BASE;
   const base = normalize(chosenBase);
   const metaFallbackEl = document.querySelector('meta[name="polly-fallback-api-base"]');
   const metaFallbackBase = metaFallbackEl && metaFallbackEl.getAttribute('content');
-  const chosenFallbackBase = window.POLLY_API_FALLBACK_BASE || searchFallbackBase || metaFallbackBase || '';
+  // Respect explicit empty-string override: if window.POLLY_API_FALLBACK_BASE is set (even ''), use it
+  const hasWindowFallbackOverride = (typeof window.POLLY_API_FALLBACK_BASE !== 'undefined');
+  // Local dev guard: on localhost, ignore meta-defined fallback unless explicitly enabled via URL or window override
+  const chosenFallbackBase = (function(){
+    if (hasWindowFallbackOverride) return window.POLLY_API_FALLBACK_BASE;
+    if (isLocalHost) {
+      // On localhost, prefer query-provided fallback; otherwise disable unless ?fallback=1
+      return searchFallbackBase || (enableFallbackFlag ? 'https://polly-3d.vercel.app/api/' : '');
+    }
+    // Non-localhost: allow meta/URL fallbacks as configured
+    return searchFallbackBase || metaFallbackBase || (enableFallbackFlag ? 'https://polly-3d.vercel.app/api/' : '');
+  })();
   const fallbackBase = normalize(chosenFallbackBase);
   // Async tasks endpoints (optional)
   const tasksCreateOverride = window.POLLY_TASKS_CREATE_PATH || search.get('tasksCreate') || '';
@@ -64,7 +79,15 @@
   // Optional: Vercel Deployment Protection bypass (for testing/automation only)
   // Set via inline script: window.POLLY_PROTECTION_BYPASS_SECRET = '...';
   window.POLLY_AUTH = {
-    PROTECTION_BYPASS_SECRET: window.POLLY_PROTECTION_BYPASS_SECRET || '',
+    PROTECTION_BYPASS_SECRET: (function(){
+      // Allow specifying bypass secret via URL (?vercelBypass=... or ?protectionBypass=...)
+      try {
+        const qs = new URLSearchParams(window.location.search);
+        const fromQuery = qs.get('vercelBypass') || qs.get('protectionBypass');
+        if (fromQuery) return fromQuery;
+      } catch(_) {}
+      return window.POLLY_PROTECTION_BYPASS_SECRET || '';
+    })(),
     SET_BYPASS_COOKIE: true,
     CUSTOM_HEADERS: {},
     buildBypassHeaders(){

@@ -1,0 +1,48 @@
+/* My order component styles based on provided spec */
+.my-order-component {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 20px;
+  gap: 8px;
+  width: 200px;
+  height: 50px;
+  position: relative;
+  flex: none;
+  order: 1;
+  flex-grow: 0;
+}
+
+.my-order-component .frame {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  flex: none;
+}
+
+.my-order-component .vector {
+  position: absolute;
+  height: 16px;
+  left: 15%;
+  right: 15%;
+  top: calc(50% - 16px/2);
+  background: #202425;
+}
+
+.my-order-component .label {
+  width: 60px;
+  height: 20px;
+  font-family: 'SF Pro Text', -apple-system, system-ui, Segoe UI, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px; /* identical to box height */
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #000000;
+  opacity: 0.8;
+  flex: none;
+  order: 1;
+  flex-grow: 0;
+}
