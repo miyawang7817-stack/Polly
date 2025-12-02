@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <!-- Google OAuth redirect override for local dev (must match client config) -->
-  <meta name="polly-google-redirect-uri" content="http://localhost:5500/" />
+  <!-- Google OAuth redirect derived from origin in JS for prod -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Privacy Policy - Polly 3D</title>
   <link rel="stylesheet" href="css/styles.css" />
@@ -202,7 +201,8 @@
         if (window.location.hostname === 'localhost') {
           window.POLLY_AUTH_BASE = 'http://localhost:8787/';
         } else {
-          window.POLLY_AUTH_BASE = "https://sh-prd-llm.xverse.cn/yunjing/yunjing-proxy/";
+          // Use same-origin for production to avoid upstream IP without valid cert
+          window.POLLY_AUTH_BASE = window.location.origin + '/';
         }
       } catch(_){ }
     })();
@@ -210,12 +210,11 @@
   <script>
     (function(){
       try {
-        if (window.location.hostname === 'localhost') {
-          window.POLLY_GOOGLE_CLIENT_ID = '461513375444-op1d4mv4qtj3ccphlhln9prfgpa5ias3.apps.googleusercontent.com';
-          window.POLLY_GOOGLE_FORCE_DIRECT = true;
-          window.POLLY_GOOGLE_RESPONSE_TYPE = 'token id_token';
-          window.POLLY_GOOGLE_SCOPE = 'openid email profile';
-        }
+        // Force direct Google OAuth to avoid any redirects to an upstream IP
+        window.POLLY_GOOGLE_CLIENT_ID = '461513375444-op1d4mv4qtj3ccphlhln9prfgpa5ias3.apps.googleusercontent.com';
+        window.POLLY_GOOGLE_FORCE_DIRECT = true;
+        window.POLLY_GOOGLE_RESPONSE_TYPE = 'token id_token';
+        window.POLLY_GOOGLE_SCOPE = 'openid email profile';
       } catch(_){ }
     })();
   </script>

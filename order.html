@@ -128,11 +128,23 @@
   <script>
     (function(){
       try {
+        // 所有环境强制使用 Google 前端直连，避免跳到无证书上游
+        window.POLLY_GOOGLE_CLIENT_ID = '461513375444-op1d4mv4qtj3ccphlhln9prfgpa5ias3.apps.googleusercontent.com';
+        window.POLLY_GOOGLE_FORCE_DIRECT = true;
+        window.POLLY_GOOGLE_RESPONSE_TYPE = 'token id_token';
+        window.POLLY_GOOGLE_SCOPE = 'openid email profile';
+      } catch(_){ }
+    })();
+  </script>
+  <script>
+    (function(){
+      try {
         if (window.location.hostname === 'localhost') {
-          window.POLLY_GOOGLE_CLIENT_ID = '461513375444-op1d4mv4qtj3ccphlhln9prfgpa5ias3.apps.googleusercontent.com';
-          window.POLLY_GOOGLE_FORCE_DIRECT = true;
-          window.POLLY_GOOGLE_RESPONSE_TYPE = 'token id_token';
-          window.POLLY_GOOGLE_SCOPE = 'openid email profile';
+          // 在本地使用代理
+          window.POLLY_AUTH_BASE = 'http://localhost:8788/';
+        } else {
+          // 生产环境使用同源
+          window.POLLY_AUTH_BASE = window.location.origin + '/';
         }
       } catch(_){ }
     })();

@@ -17,8 +17,7 @@
     <link rel="preconnect" href="https://cdn.skypack.dev" crossorigin>
     <link rel="dns-prefetch" href="//cdn.skypack.dev">
     <link rel="preconnect" href="https://polly-3d-git-main-miyas-projects-5bda30c7.vercel.app" crossorigin>
-    <!-- Google OAuth redirect override for local dev (must match client config) -->
-    <meta name="polly-google-redirect-uri" content="http://localhost:5500/">
+    <!-- Google OAuth redirect is derived from window.location.origin in JS for prod -->
     <!-- Design tokens loader: applies Figma-exported tokens to CSS variables -->
     <script src="js/figma_tokens.js" defer></script>
 </head>
@@ -366,8 +365,8 @@
             // Align auth endpoints with local dev proxy
             window.POLLY_AUTH_BASE = 'http://localhost:8788/';
           } else {
-            window.POLLY_AUTH_BASE = 
-              "https://polly-3d-git-main-miyas-projects-5bda30c7.vercel.app/";
+            // Use same-origin for production so rewrites/proxies work consistently
+            window.POLLY_AUTH_BASE = window.location.origin + '/';
           }
         } catch(_){ }
       })();
@@ -375,13 +374,11 @@
     <script>
       (function(){
         try {
-          if (window.location.hostname === 'localhost') {
-            // Local debug: force front-end direct Google OAuth using provided client ID
-            window.POLLY_GOOGLE_CLIENT_ID = '461513375444-op1d4mv4qtj3ccphlhln9prfgpa5ias3.apps.googleusercontent.com';
-            window.POLLY_GOOGLE_FORCE_DIRECT = true;
-            window.POLLY_GOOGLE_RESPONSE_TYPE = 'token id_token';
-            window.POLLY_GOOGLE_SCOPE = 'openid email profile';
-          }
+          // Force front-end direct Google OAuth using provided client ID (works in prod too)
+          window.POLLY_GOOGLE_CLIENT_ID = '461513375444-op1d4mv4qtj3ccphlhln9prfgpa5ias3.apps.googleusercontent.com';
+          window.POLLY_GOOGLE_FORCE_DIRECT = true;
+          window.POLLY_GOOGLE_RESPONSE_TYPE = 'token id_token';
+          window.POLLY_GOOGLE_SCOPE = 'openid email profile';
         } catch(_){ }
       })();
     </script>

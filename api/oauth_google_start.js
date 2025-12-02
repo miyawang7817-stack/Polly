@@ -14,11 +14,13 @@ export default async function handler(req, res) {
       const clientId = process.env.GOOGLE_CLIENT_ID;
       const scope = process.env.GOOGLE_OAUTH_SCOPE || 'openid email profile';
       const responseType = process.env.GOOGLE_RESPONSE_TYPE || 'token'; // can be 'token id_token' if using implicit hybrid
+      const prompt = process.env.GOOGLE_OAUTH_PROMPT || '';
       const url = new URL(endpoint);
       url.searchParams.set('client_id', clientId);
       url.searchParams.set('redirect_uri', redirectUri);
       url.searchParams.set('response_type', responseType);
       url.searchParams.set('scope', scope);
+      if (prompt) url.searchParams.set('prompt', prompt);
       if (state) url.searchParams.set('state', state);
       if ((responseType || '').includes('id_token')) {
         const nonce = nonceFromQuery || (Math.random().toString(36).slice(2) + Date.now().toString(36));

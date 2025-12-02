@@ -308,6 +308,8 @@ function loginWithGoogle(){
       url.searchParams.set('redirect_uri', redirectUri);
       url.searchParams.set('response_type', responseType);
       url.searchParams.set('scope', scope);
+      const prompt = window.POLLY_GOOGLE_PROMPT || sp.get('googlePrompt');
+      if (prompt) url.searchParams.set('prompt', prompt);
       if ((responseType || '').includes('id_token')) {
         const givenNonce = sp.get('nonce');
         const nonce = givenNonce || (Math.random().toString(36).slice(2) + Date.now().toString(36));
@@ -337,17 +339,51 @@ function loginWithGoogle(){
 }
 
 function loginWithApple(){
-  const base = (function(path){
-    try {
-      if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
-        return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const forceDirect = (sp.get('forceAppleDirect') === '1') || !!window.POLLY_APPLE_FORCE_DIRECT;
+    const clientId = window.POLLY_APPLE_CLIENT_ID || sp.get('appleClientId');
+    const scope = window.POLLY_APPLE_SCOPE || 'name email';
+    const responseType = window.POLLY_APPLE_RESPONSE_TYPE || 'id_token';
+    const responseMode = window.POLLY_APPLE_RESPONSE_MODE || 'fragment';
+    const redirectUri = getGoogleRedirectUri();
+
+    if (forceDirect && clientId) {
+      const endpoint = 'https://appleid.apple.com/auth/authorize';
+      const url = new URL(endpoint);
+      url.searchParams.set('client_id', clientId);
+      url.searchParams.set('redirect_uri', redirectUri);
+      url.searchParams.set('response_type', responseType);
+      url.searchParams.set('response_mode', responseMode);
+      url.searchParams.set('scope', scope);
+      if ((responseType || '').includes('id_token')) {
+        const givenNonce = sp.get('nonce');
+        const nonce = givenNonce || (Math.random().toString(36).slice(2) + Date.now().toString(36));
+        try { sessionStorage.setItem('POLLY_OAUTH_NONCE', nonce); } catch(_){ }
+        url.searchParams.set('nonce', nonce);
       }
-    } catch(_){ }
-    return '/' + path.replace(/^\//,'');
-  })('oauth/apple/start');
-  const redirectUri = getGoogleRedirectUri();
-  const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
-  window.location.href = url;
+      const state = sp.get('state') || '';
+      if (state) url.searchParams.set('state', state);
+      window.location.href = url.toString();
+      return;
+    }
+
+    const base = (function(path){
+      try {
+        if (window.POLLY_API && typeof window.POLLY_API.urlFrom === 'function') {
+          return window.POLLY_API.urlFrom(window.POLLY_AUTH_BASE || '', path);
+        }
+      } catch(_){ }
+      return '/' + path.replace(/^\//,'');
+    })('oauth/apple/start');
+    const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
+    window.location.href = url;
+  } catch(_) {
+    const base = (window.POLLY_API && typeof window.POLLY_API.url === 'function') ? window.POLLY_API.url('oauth/apple/start') : '/oauth/apple/start';
+    const redirectUri = getGoogleRedirectUri();
+    const url = base + (base.includes('?') ? '&' : '?') + 'redirect_uri=' + encodeURIComponent(redirectUri);
+    window.location.href = url;
+  }
 }
 
 function getGoogleRedirectUri(){

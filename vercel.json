@@ -4,6 +4,7 @@
   "trailingSlash": false,
   "rewrites": [
     { "source": "/generate", "destination": "/api/generate" },
+    { "source": "/generate_image", "destination": "/api/generate_image" },
     { "source": "/login", "destination": "/api/login" },
     { "source": "/request-email-code", "destination": "/api/request_email_code" },
     { "source": "/login-email-code", "destination": "/api/login_email_code" },
